@@ -1,13 +1,123 @@
 import React, { useState, useEffect } from "react";
+import * as XLSX from "xlsx";
 import { getFirestore, collection, addDoc, getDocs, serverTimestamp } from "firebase/firestore";
 import app from "../../firebase/firebaseConfig";
 import { uploadFileToDrive } from "../../utils/GoogleDriveUploader";
 import { Link } from "react-router-dom";
 import MyExpenses from "./MyExpenses";
 import ApprovalTab from "./ApprovalTab";
+import ExportTab from "./ExportTab";
 
 function ExpenseDesk({ name, role }) {
     const [activeTab, setActiveTab] = useState("add");
+    const [batchData, setBatchData] = useState([]);
+    const [excelFileName, setExcelFileName] = useState("");
+
+                function formatToSlash(date) {
+                                const day = String(date.getDate()).padStart(2, "0");
+                                const month = String(date.getMonth() + 1).padStart(2, "0");
+                                const year = date.getFullYear();
+                                return `${day}/${month}/${year}`;
+                }
+
+                function formatSlashDateFromSerial(serial) {
+                                const date = new Date((serial - 25569) * 86400 * 1000);
+                                return formatToSlash(date);
+                }
+
+                function formatSlashDateFromString(dateStr) {
+                                const date = new Date(dateStr);
+                                if (isNaN(date)) return formatToSlash(new Date());
+                                return formatToSlash(date);
+                }
+
+
+                const handleExcelUpload = (e) => {
+                                const file = e.target.files[0];
+                                if (!file) return;
+
+                                setExcelFileName(file.name);
+
+                                const reader = new FileReader();
+                                reader.onload = (evt) => {
+                                                const bstr = evt.target.result;
+                                                const wb = XLSX.read(bstr, { type: "binary" });
+                                                const ws = wb.Sheets[wb.SheetNames[0]];
+                                                const json = XLSX.utils.sheet_to_json(ws, { defval: "" });
+
+                                                // ✅ Mandatory Columns Check
+                                                const requiredCols = [
+                                                                "Date of Expense",
+                                                                "Account Head",
+                                                                "Site Name",
+                                                                "Location",
+                                                                "Type Of Expense",
+                                                                "Amount",
+                                                                "Paid To",
+                                                                "Remarks"
+                                                ];
+
+                                                const sheetCols = Object.keys(json[0] || {});
+                                                const missing = requiredCols.filter(col => !sheetCols.includes(col));
+
+                                                if (missing.length > 0) {
+                                                                alert("❌ Missing columns: " + missing.join(", "));
+                                                                setBatchData([]);
+                                                                setExcelFileName("");
+                                                                return;
+                                                }
+
+                                                setBatchData(json);
+                                };
+                                reader.readAsBinaryString(file);
+                };
+
+                const uploadAllExpenses = async () => {
+                                if (batchData.length === 0) {
+                                                alert("❌ No data loaded.");
+                                                return;
+                                }
+
+                                const db = getFirestore(app);
+                                let success = 0;
+                                let fail = 0;
+                                let failedRows = [];
+
+                                for (let i = 0; i < batchData.length; i++) {
+                                                const row = batchData[i];
+                                                try {
+                                                                await addDoc(collection(db, "expenses"), {
+                                                                                    date: typeof row["Date of Expense"] === "number"
+                                                                                                    ? formatSlashDateFromSerial(row["Date of Expense"])
+                                                                                                    : formatSlashDateFromString(row["Date of Expense"]),
+                                                                                    person: row["Account Head"] || "",
+                                                                                    person_lower: (row["Account Head"] || "").toLowerCase(),
+                                                                                    siteName: row["Site Name"] || "",
+                                                                                    location: row["Location"] || "",
+                                                                                    category: row["Type Of Expense"] || "",
+                                                                                    paidTo: row["Paid To"] || "",
+                                                                                    amount: parseFloat(row["Amount"]) || 0,
+                                                                                    remarks: row["Remarks"] || "",
+                                                                                    billUrl: "",
+                                                                                    status: "pending",
+                                                                                    createdAt: serverTimestamp(),
+                                                                });
+                                                                success++;
+                                                } catch (err) {
+                                                                fail++;
+                                                                failedRows.push(i + 2); // Excel row number (assuming header is row 1)
+                                                }
+                                }
+
+                                let msg = `✅ Upload complete.\nSuccessful: ${success}\nFailed: ${fail}`;
+                                if (fail > 0) {
+                                                msg += `\n⚠️ Failed rows: ${failedRows.join(", ")}`;
+                                }
+
+                                alert(msg);
+                                setBatchData([]);
+                                setExcelFileName("");
+                };
 
     const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
     const [category, setCategory] = useState("");
@@ -49,8 +159,9 @@ function ExpenseDesk({ name, role }) {
 
         try {
             const data = {
-                date,
+                date: formatToSlash(new Date(date)),
                 person: name,
+                person_lower: name.trim().toLowerCase(),
                 siteName: selectedSite,
                 location,
                 category,
@@ -94,9 +205,11 @@ function ExpenseDesk({ name, role }) {
                 <button className={tabStyle("my")} onClick={() => setActiveTab("my")}>👤 My Expenses</button>
                 <button className={tabStyle("approval")} onClick={() => setActiveTab("approval")}>✅ Approvals</button>
                 <button className={tabStyle("export")} onClick={() => setActiveTab("export")}>📤 Export Reports</button>
+                <button className={tabStyle("batch")} onClick={() => setActiveTab("batch")}>📥 Batch Upload</button>
+
             </div>
 
-            <div className="bg-white rounded-lg shadow-md p-8 max-w-3xl mx-auto">
+            <div className="bg-white rounded-lg shadow-md px-4 py-6 sm:px-6 lg:px-8 max-w-6xl mx-auto space-y-6">
                 {activeTab === "add" && (
                     <div className="space-y-6">
                         {/* 📅 Date */}
@@ -210,8 +323,67 @@ function ExpenseDesk({ name, role }) {
                 )}
 
                 {activeTab === "export" && (
-                    <p className="text-gray-500 text-center">📤 Export report screen coming soon...</p>
+                    <ExportTab />
                 )}
+
+                {activeTab === "batch" && (
+                                <div className="space-y-6 text-sm">
+                                                <div className="mb-4">
+                                                                <label className="block text-gray-700 font-medium mb-1">📁 Upload Excel File</label>
+                                                                <input
+                                                                        type="file"
+                                                                        accept=".xlsx"
+                                                                        onChange={handleExcelUpload}
+                                                                        className="border border-gray-300 rounded px-3 py-2 w-full"
+                                                                />
+                                                                {excelFileName && (
+                                                                        <p className="text-green-600 mt-2">✅ Loaded: {excelFileName}</p>
+                                                                )}
+                                                </div>
+
+                                                {batchData.length > 0 && (
+                                                                <>
+                                                                        <p className="text-gray-800 font-semibold">
+                                                                                📋 Preview ({batchData.length} entries)
+                                                                        </p>
+                                                                        <div className="overflow-auto max-h-64 border border-gray-200 rounded">
+                                                                                <table className="min-w-full text-xs">
+                                                                                        <thead className="bg-gray-100 sticky top-0 z-10">
+                                                                                                <tr>
+                                                                                                        {Object.keys(batchData[0]).map((key, index) => (
+                                                                                                                <th key={index} className="px-2 py-1 border">
+                                                                                                                        {key}
+                                                                                                                </th>
+                                                                                                        ))}
+                                                                                                </tr>
+                                                                                        </thead>
+                                                                                        <tbody>
+                                                                                                {batchData.slice(0, 20).map((row, rowIndex) => (
+                                                                                                        <tr key={rowIndex}>
+                                                                                                                {Object.values(row).map((val, colIndex) => (
+                                                                                                                        <td key={colIndex} className="px-2 py-1 border">
+                                                                                                                                {val}
+                                                                                                                        </td>
+                                                                                                                ))}
+                                                                                                        </tr>
+                                                                                                ))}
+                                                                                        </tbody>
+                                                                                </table>
+                                                                        </div>
+
+                                                                        <div className="flex justify-center mt-4">
+                                                                                <button
+                                                                                        onClick={uploadAllExpenses}
+                                                                                        className="bg-[#1A237E] text-white px-6 py-2 rounded hover:bg-[#0f164e]"
+                                                                                >
+                                                                                        🚀 Upload All to Firebase
+                                                                                </button>
+                                                                        </div>
+                                                                </>
+                                                )}
+                                </div>
+                )}
+
             </div>
         </div>
     );

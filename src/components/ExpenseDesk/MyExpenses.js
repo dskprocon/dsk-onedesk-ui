@@ -7,10 +7,12 @@ import { useNavigate } from "react-router-dom";
 function MyExpenses({ name, role }) {
             const db = getFirestore(app);
             const navigate = useNavigate();
+            console.log("✅ ROLE:", role);
 
             const [expenses, setExpenses] = useState([]);
             const [filteredExpenses, setFilteredExpenses] = useState([]);
-            const [loading, setLoading] = useState(true);
+            const [loading, setLoading] = useState(false);
+            const [showTable, setShowTable] = useState(false);
 
             const [personList, setPersonList] = useState([]);
             const [siteList, setSiteList] = useState([]);
@@ -40,27 +42,32 @@ function MyExpenses({ name, role }) {
                         loadFilters();
             }, []);
 
-            useEffect(() => {
-                        const loadExpenses = async () => {
-                                    setLoading(true);
-                                    try {
-                                                const person = role === "admin" ? (selectedPerson || null) : name;
-                                                const result = await fetchExpenses(person, fromDate || null, toDate || null);
-                                                setExpenses(result);
-                                                filterAll(result);
-                                    } catch (err) {
-                                                console.error("❌ Error fetching expenses:", err);
-                                    } finally {
-                                                setLoading(false);
-                                    }
-                        };
+            const handleSearch = async () => {
+                        setLoading(true);
+                        setShowTable(false);
+                        try {
+                                    const person = role === "admin" ? (selectedPerson || null) : name;
+                                    const result = await fetchExpenses(person, fromDate || null, toDate || null);
+                                    setExpenses(result);
+                                    filterAll(result);
+                                    setShowTable(true);
+                        } catch (err) {
+                                    console.error("❌ Error fetching expenses:", err);
+                        } finally {
+                                    setLoading(false);
+                        }
+            };
 
-                        loadExpenses();
-            }, [name, role, selectedPerson, fromDate, toDate]);
-
-            useEffect(() => {
-                        filterAll(expenses);
-            }, [selectedSite, selectedCategory]);
+            const handleClear = () => {
+                        setSelectedPerson("");
+                        setSelectedSite("");
+                        setSelectedCategory("");
+                        setFromDate("");
+                        setToDate("");
+                        setExpenses([]);
+                        setFilteredExpenses([]);
+                        setShowTable(false);
+            };
 
             const filterAll = (data) => {
                         let filtered = [...data];
@@ -75,14 +82,10 @@ function MyExpenses({ name, role }) {
                         setFilteredExpenses(filtered);
             };
 
-            if (loading) {
-                        return <p className="text-center text-gray-500">🔄 Loading expenses...</p>;
-            }
-
             return (
                         <div className="space-y-6">
                                     {/* 🔍 Filter Section */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-4 justify-center items-start">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 justify-center items-start">
                                                 <div>
                                                             <label className="block text-sm text-gray-700 mb-1">📅 From</label>
                                                             <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="border border-gray-300 rounded px-3 py-1 w-full" />
@@ -110,7 +113,7 @@ function MyExpenses({ name, role }) {
                                                             </select>
                                                 </div>
                                                 {role?.toLowerCase() === "admin" && (
-                                                            <div className="col-span-full">
+                                                            <div>
                                                                         <label className="block text-sm text-gray-700 mb-1">👤 Person</label>
                                                                         <select value={selectedPerson} onChange={(e) => setSelectedPerson(e.target.value)} className="border border-gray-300 rounded px-3 py-1 w-full">
                                                                                     <option value="">All Persons</option>
@@ -122,8 +125,17 @@ function MyExpenses({ name, role }) {
                                                 )}
                                     </div>
 
+                                    <div className="flex justify-center gap-6 mt-6">
+                                                <button onClick={handleSearch} className="bg-[#1A237E] text-white px-6 py-2 rounded hover:bg-[#0f164e]">🔍 Search</button>
+                                                <button onClick={handleClear} className="bg-gray-300 text-gray-800 px-6 py-2 rounded hover:bg-gray-400">🧼 Clear All</button>
+                                    </div>
+
                                     {/* 📄 Table */}
-                                    {filteredExpenses.length === 0 ? (
+                                    {loading ? (
+                                                <p className="text-center text-gray-500 mt-4">🔄 Loading expenses...</p>
+                                    ) : !showTable ? (
+                                                <p className="text-center text-gray-400 mt-6">📌 Apply filters and click Search to view your expenses.</p>
+                                    ) : filteredExpenses.length === 0 ? (
                                                 <p className="text-center text-gray-500 mt-4">😕 No expenses found.</p>
                                     ) : (
                                                 <div className="overflow-x-auto">
