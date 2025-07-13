@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { getFirestore, collection, addDoc, getDocs, serverTimestamp } from "firebase/firestore";
-import app from "../firebase/firebaseConfig";
-import { uploadFileToDrive } from "../utils/GoogleDriveUploader"; // ✅ IMPORT HERE
+import app from "../../firebase/firebaseConfig";
+import { uploadFileToDrive } from "../../utils/GoogleDriveUploader";
+import { Link } from "react-router-dom";
+import MyExpenses from "./MyExpenses";
+import ApprovalTab from "./ApprovalTab";
 
-function ExpenseDesk({ name }) {
+function ExpenseDesk({ name, role }) {
     const [activeTab, setActiveTab] = useState("add");
 
     const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
@@ -14,7 +17,7 @@ function ExpenseDesk({ name }) {
     const [sites, setSites] = useState([]);
     const [selectedSite, setSelectedSite] = useState("");
     const [location, setLocation] = useState("");
-    const [billFile, setBillFile] = useState(null); // ✅ File state
+    const [billFile, setBillFile] = useState(null);
 
     const db = getFirestore(app);
 
@@ -105,7 +108,12 @@ function ExpenseDesk({ name }) {
                         {/* 👤 Person */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">👤 Person</label>
-                            <input type="text" value={name} disabled className="w-full bg-gray-100 border border-gray-300 rounded px-4 py-2 text-gray-500" />
+                            <input
+                                type="text"
+                                value={name || "Not Logged In"}
+                                disabled
+                                className="w-full bg-gray-100 border border-gray-300 rounded px-4 py-2 text-gray-500"
+                            />
                         </div>
 
                         {/* 🏗 Site Name */}
@@ -175,15 +183,35 @@ function ExpenseDesk({ name }) {
                             />
                         </div>
 
-                        {/* 💾 Save Button */}
-                        <div className="text-center">
-                            <button onClick={handleSubmit} className="bg-[#1A237E] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#0f164e] transition">
+                        {/* 💾 Save and ⬅ Back Buttons */}
+                        <div className="flex justify-center gap-6">
+                            <button
+                                onClick={handleSubmit}
+                                className="bg-[#1A237E] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#0f164e] transition"
+                            >
                                 💾 Save Expense
                             </button>
+                            <Link
+                                to="/"
+                                className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-semibold hover:bg-gray-300 transition"
+                            >
+                                ⬅ Back to Home
+                            </Link>
                         </div>
                     </div>
                 )}
-                {activeTab !== "add" && <p className="text-gray-500 text-center">Coming soon...</p>}
+
+                {activeTab === "my" && (
+                    <MyExpenses name={name} role={role} />
+                )}
+
+                {activeTab === "approval" && (
+                    <ApprovalTab />
+                )}
+
+                {activeTab === "export" && (
+                    <p className="text-gray-500 text-center">📤 Export report screen coming soon...</p>
+                )}
             </div>
         </div>
     );

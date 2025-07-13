@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Route, Routes } from "react-router-dom";
 import Login from "./components/Login";
 import Home from "./components/Home";
-import ExpenseDesk from "./components/ExpenseDesk";
+import ExpenseDesk from "./components/ExpenseDesk/ExpenseDesk";
 import SettingsScreen from "./components/SettingsScreen";
 
 function App() {
@@ -34,7 +34,7 @@ function App() {
                     )
                 }
             />
-            <Route path="/expense" element={<ExpenseDesk name={userName} />} />
+            <Route path="/expense" element={<ExpenseDesk name={userName} role={userRole} />} />
             <Route path="/settings" element={<SettingsScreen />} />
         </Routes>
     );
