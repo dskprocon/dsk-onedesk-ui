@@ -6,7 +6,10 @@ import {
     orderBy,
     getDocs,
     doc,
-    updateDoc
+    updateDoc,
+    getDoc,
+    addDoc,
+    serverTimestamp
 } from "firebase/firestore";
 import app from "./firebaseConfig";
 
@@ -52,14 +55,33 @@ export const fetchExpenses = async (person = null, fromDate = null, toDate = nul
     }
 };
 
-// ✅ For Approvals
-export const updateExpenseStatus = async (id, newStatus) => {
+// ✅ For Approvals – Update status, save remark, and trigger notification
+export const updateExpenseStatus = async (id, newStatus, remark) => {
     try {
         const ref = doc(db, "expenses", id);
-        await updateDoc(ref, { status: newStatus });
+        const snapshot = await getDoc(ref);
+        const data = snapshot.data();
+
+        await updateDoc(ref, {
+            status: newStatus,
+            adminRemark: remark || "",
+            updatedAt: serverTimestamp()
+        });
+
+        const cleanUser = (data.person || "Unknown").trim();
+
+        await addDoc(collection(db, "notifications"), {
+            user: cleanUser,
+            status: newStatus,
+            expenseId: id,
+            remark: remark || "",
+            read: false,
+            date: serverTimestamp()
+        });
+
         return true;
     } catch (err) {
-        console.error("❌ Failed to update status:", err);
+        console.error("❌ Failed to update status + notify:", err);
         return false;
     }
 };
