@@ -2,9 +2,9 @@
 import React, { useEffect, useState } from "react";
 import { getFirestore, collection, getDocs, query, where, orderBy } from "firebase/firestore";
 import app from "../../firebase/firebaseConfig";
-import { updateExpenseStatus } from "../../firebase/expenseUtils";
 import { triggerLogout } from "../../utils/logoutHelper";
 import { triggerGoHome, triggerGoBack } from "../../utils/navigationHelper";
+import { fetchExpenses, updateExpenseStatus } from "../../firebase/services/expenseService";
 
 function ApprovalTab({ name = "Unknown", role = "user" }) {
     const db = getFirestore(app);

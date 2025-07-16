@@ -12,7 +12,7 @@ function ExpenseMenu({ name, role }) {
         "w-full max-w-sm sm:max-w-md md:max-w-lg mx-auto bg-gradient-to-br from-[#2F2F2F] to-[#505050] text-white px-4 py-4 rounded-2xl shadow-xl text-base sm:text-lg font-semibold text-center hover:scale-105 hover:shadow-2xl transition-all duration-200";
 
     return (
-        <div className="min-h-screen bg-[#F6F6F6] pt-20 px-4 relative">
+        <div className="min-h-screen bg-[#F6F6F6] pt-20 pb-20 px-4 relative">
 
             {/* 🔒 Logout */}
             <button
@@ -56,6 +56,18 @@ function ExpenseMenu({ name, role }) {
                 <button onClick={() => navigate("/expense/batch")} className={buttonStyle}>
                     📥 Batch Upload
                 </button>
+
+                {/* 🆕 NEW: Add Payment (Admin only) */}
+                {role === "admin" && (
+                    <button onClick={() => navigate("/expense/payment")} className={buttonStyle}>
+                        ➕ Add Payment
+                    </button>
+                )}
+
+                {/* 🆕 NEW: View Ledger (All users) */}
+                <button onClick={() => navigate("/expense/ledger")} className={buttonStyle}>
+                    📘 View Ledger
+                </button>
             </div>
 
             {/* 🔚 Universal Footer Buttons */}
@@ -85,8 +97,8 @@ function ExpenseMenu({ name, role }) {
                 </div>
             )}
 
-            {/* 🔻 Footer */}
-            <div className="mt-10 text-sm text-center text-gray-500 px-4">
+            {/* 🔻 Sticky Footer – Fixed at Bottom */}
+            <div className="absolute bottom-4 left-0 right-0 text-center text-sm text-gray-500">
                 Made by <span className="font-semibold">DSK Synapse</span>
             </div>
         </div>

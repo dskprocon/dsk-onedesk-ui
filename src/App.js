@@ -13,6 +13,8 @@ import ApprovalTab from "./components/ExpenseDesk/ApprovalTab";
 import ExportTab from "./components/ExpenseDesk/ExportTab";
 import BatchUpload from "./components/ExpenseDesk/BatchUpload";
 import Tool from "./components/ExpenseDesk/Tool";
+import AddPayment from "./components/ExpenseDesk/AddPayment";
+import ViewLedger from "./components/ExpenseDesk/ViewLedger";
 
 // ⚙️ Admin Settings
 import SettingsScreen from "./components/SettingsScreen";
@@ -124,8 +126,10 @@ function App() {
             <Route path="/expense/add" element={<AddExpense name={userName} role={userRole} />} />
             <Route path="/expense/my" element={<MyExpenses name={userName} role={userRole} />} />
             <Route path="/expense/approval" element={<ApprovalTab name={userName} role={userRole} />} />
-            <Route path="/expense/export" element={<ExportTab />} />
+            <Route path="/expense/export" element={<ExportTab name={userName} role={userRole} />} />
             <Route path="/expense/batch" element={<BatchUpload name={userName} role={userRole} />} />
+            <Route path="/expense/payment" element={<AddPayment name={userName} role={userRole} />} />
+            <Route path="/expense/ledger" element={<ViewLedger name={userName} role={userRole} />} />
             <Route
                 path="/expense/tools"
                 element={<Tool name={userName} role={userRole} isLoggedIn={isLoggedIn} />}
