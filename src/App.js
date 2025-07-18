@@ -1,3 +1,4 @@
+// src/App.js
 import React, { useState, useEffect } from "react";
 import { Route, Routes, useNavigate } from "react-router-dom";
 
@@ -22,6 +23,7 @@ import SettingsScreen from "./components/SettingsScreen";
 // 🔁 Global Actions
 import { setLogoutFunction } from "./utils/logoutHelper";
 import { setGoHome, setGoBack } from "./utils/navigationHelper";
+import { startAutoLogout } from "./utils/autoLogout"; // ✅ Auto logout logic
 
 function App() {
     const navigate = useNavigate();
@@ -43,30 +45,17 @@ function App() {
         }
     }, []);
 
-    // 🔐 Inactivity Auto-Logout after 5 minutes
+    // 🔐 Inactivity Auto-Logout using helper
     useEffect(() => {
-        let timer;
+        if (!isLoggedIn) return;
 
-        const resetTimer = () => {
-            clearTimeout(timer);
-            timer = setTimeout(() => {
-                alert("🕒 You were inactive for 5 minutes. Auto-logged out.");
-                handleLogout();
-            }, 5 * 60 * 1000); // 5 minutes
-        };
-
-        if (isLoggedIn) {
-            window.addEventListener("mousemove", resetTimer);
-            window.addEventListener("keydown", resetTimer);
-            window.addEventListener("click", resetTimer);
-            resetTimer();
-        }
+        const stopTracking = startAutoLogout(() => {
+            alert("🕒 You were inactive for 5 minutes. Auto-logged out.");
+            handleLogout();
+        }, 5 * 60 * 1000); // 5 minutes
 
         return () => {
-            clearTimeout(timer);
-            window.removeEventListener("mousemove", resetTimer);
-            window.removeEventListener("keydown", resetTimer);
-            window.removeEventListener("click", resetTimer);
+            stopTracking(); // Cleanup
         };
     }, [isLoggedIn]);
 
