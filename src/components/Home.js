@@ -20,7 +20,7 @@ function Home({ onLogout, role, name }) {
 
                                         {isAdmin && (
                                                 <>
-                                                        <UniversalButton to="/attendance" icon="🧑‍💼" label="Attendance" />
+                                                        <UniversalButton to="/punch" icon="🕴️" label="Punch In Desk" />
                                                         <UniversalButton to="/crm" icon="📊" label="Project CRM" />
                                                         <UniversalButton to="/partition" icon="📁" label="Partition System" />
                                                         <UniversalButton to="/ceiling" icon="🧱" label="Ceiling System" />

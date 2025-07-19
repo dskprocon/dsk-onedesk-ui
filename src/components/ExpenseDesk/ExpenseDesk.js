@@ -26,9 +26,6 @@ function ExpenseMenu({ name, role }) {
                                 <button onClick={() => navigate("/expense/export")} className={buttonStyle}>
                                         📤 Export Reports
                                 </button>
-                                <button onClick={() => navigate("/expense/batch")} className={buttonStyle}>
-                                        📥 Batch Upload
-                                </button>
 
                                 {role === "admin" && (
                                         <button onClick={() => navigate("/expense/payment")} className={buttonStyle}>
