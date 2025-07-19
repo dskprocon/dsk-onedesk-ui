@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { fetchExpenses } from "../../firebase/services/expenseService";
 import Select from "react-select";
-import UniversalLayout from "../universal/UniversalLayout"; // ✅ Fixed path
+import UniversalLayout from "../universal/UniversalLayout";
 
 function MyExpenses({ name, role }) {
         const [allExpenses, setAllExpenses] = useState([]);
@@ -32,21 +32,16 @@ function MyExpenses({ name, role }) {
 
         const handleSearch = () => {
                 const isAnyFilterApplied =
-                        (role === "admin" && selectedPerson) ||
-                        selectedSite ||
-                        selectedCategory ||
-                        fromDate ||
-                        toDate;
-
-                if (!isAnyFilterApplied) {
-                        alert("⚠️ Please apply at least one filter.");
-                        return;
-                }
+                        selectedPerson || selectedSite || selectedCategory || fromDate || toDate;
 
                 let filtered = [...allExpenses];
 
                 if (role !== "admin") {
                         filtered = filtered.filter(exp => exp.person === name);
+                        if (!isAnyFilterApplied) {
+                                alert("⚠️ Please apply at least one filter.");
+                                return;
+                        }
                 } else if (selectedPerson) {
                         filtered = filtered.filter(exp => exp.person === selectedPerson);
                 }
@@ -62,13 +57,15 @@ function MyExpenses({ name, role }) {
                 if (fromDate && toDate) {
                         const from = new Date(fromDate);
                         const to = new Date(toDate);
-                        to.setHours(23, 59, 59); // include full day
+                        to.setHours(23, 59, 59);
 
                         filtered = filtered.filter(exp => {
                                 let expDate;
                                 if (exp.dateObject?.seconds) {
                                         expDate = new Date(exp.dateObject.seconds * 1000);
-                                } else if (exp.date) {
+                                } else if (typeof exp.date === "number") {
+                                        expDate = new Date((exp.date - 25569) * 86400 * 1000);
+                                } else if (typeof exp.date === "string") {
                                         const [day, month, year] = exp.date.split("/");
                                         expDate = new Date(`${year}-${month}-${day}`);
                                 } else {
@@ -90,6 +87,15 @@ function MyExpenses({ name, role }) {
                 setSelectedPerson("");
                 setFilteredExpenses([]);
                 setShowResults(false);
+        };
+
+        // 🔄 Convert number to dd/mm/yyyy
+        const formatDate = (value) => {
+                if (typeof value === "number") {
+                        const jsDate = new Date((value - 25569) * 86400 * 1000);
+                        return jsDate.toLocaleDateString("en-GB");
+                }
+                return value;
         };
 
         return (
@@ -187,14 +193,16 @@ function MyExpenses({ name, role }) {
                                                         <tbody>
                                                                 {filteredExpenses.map((exp, index) => (
                                                                         <tr key={index}>
-                                                                                <td className="border px-3 py-2 text-sm">{exp.date}</td>
+                                                                                <td className="border px-3 py-2 text-sm">{formatDate(exp.date)}</td>
                                                                                 <td className="border px-3 py-2 text-sm">{exp.person}</td>
                                                                                 <td className="border px-3 py-2 text-sm">{exp.siteName}</td>
                                                                                 <td className="border px-3 py-2 text-sm">{exp.category}</td>
                                                                                 <td className="border px-3 py-2 text-sm">{exp.paidTo}</td>
                                                                                 <td className="border px-3 py-2 text-sm">₹{exp.amount}</td>
                                                                                 <td className="border px-3 py-2 text-sm">{exp.remarks}</td>
-                                                                                <td className="border px-3 py-2 text-sm">{exp.status}</td>
+                                                                                <td className="border px-3 py-2 text-sm">
+                                                                                  {exp.status?.charAt(0).toUpperCase() + exp.status?.slice(1)}
+                                                                                </td>
                                                                         </tr>
                                                                 ))}
                                                         </tbody>

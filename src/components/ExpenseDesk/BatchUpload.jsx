@@ -18,8 +18,22 @@ function BatchUpload({ name, role }) {
                         const data = new Uint8Array(evt.target.result);
                         const workbook = XLSX.read(data, { type: "array" });
                         const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                        const jsonData = XLSX.utils.sheet_to_json(sheet);
-                        setRows(jsonData);
+                        const rawData = XLSX.utils.sheet_to_json(sheet);
+
+                        // ✅ Convert Excel date serials to dd/mm/yyyy
+                        const converted = rawData.map(row => {
+                                const newRow = { ...row };
+                                if (typeof row.Date === "number") {
+                                        const jsDate = new Date((row.Date - 25569) * 86400 * 1000);
+                                        const day = String(jsDate.getDate()).padStart(2, '0');
+                                        const month = String(jsDate.getMonth() + 1).padStart(2, '0');
+                                        const year = jsDate.getFullYear();
+                                        newRow.Date = `${day}/${month}/${year}`;
+                                }
+                                return newRow;
+                        });
+
+                        setRows(converted);
                 };
 
                 reader.readAsArrayBuffer(file);
@@ -36,9 +50,9 @@ function BatchUpload({ name, role }) {
                 let failed = 0;
 
                 for (const row of rows) {
-                        const { Date, Site, Location, Category, PaidTo, Amount, Remarks } = row;
+                        const { Date, Site, Location, Category, PaidTo, Amount, Remarks, Person } = row;
 
-                        if (!Date || !Site || !Location || !Category || !PaidTo || !Amount) {
+                        if (!Date || !Site || !Location || !Category || !PaidTo || !Amount || !Person) {
                                 failed++;
                                 continue;
                         }
@@ -52,8 +66,8 @@ function BatchUpload({ name, role }) {
                                         paidTo: PaidTo,
                                         amount: parseFloat(Amount),
                                         remarks: Remarks || "",
-                                        person: name,
-                                        person_lower: name.trim().toLowerCase(),
+                                        person: Person,
+                                        person_lower: Person.trim().toLowerCase(),
                                         status: "pending",
                                         createdAt: serverTimestamp(),
                                 };

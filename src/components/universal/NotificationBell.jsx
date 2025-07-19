@@ -10,16 +10,19 @@ function NotificationBell({ userName = "", role = "" }) {
 
         useEffect(() => {
                 const fetchNotifications = async () => {
-                        if (!userName || role === "admin") return;
+                    try {
                         const q = query(
-                                collection(db, "notifications"),
-                                where("user", "==", userName),
-                                orderBy("date", "desc")
+                            collection(db, "notifications"),
+                            where("user", "==", userName), // ✅ only current user's
+                            orderBy("timestamp", "desc")
                         );
                         const snapshot = await getDocs(q);
-                        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        setNotifications(data.slice(0, 10));
+                        // ... your logic here
+                    } catch (error) {
+                        console.error("Error fetching notifications:", error);
+                    }
                 };
+
                 fetchNotifications();
         }, [db, userName]);
 
