@@ -82,6 +82,13 @@ function PunchInDesk({ name, role }) {
                             🧾 Approve Attendance
                         </button>
                     )}
+
+                    {/* 8. Manage Users – ADMIN only */}
+                    {role?.toUpperCase() === "ADMIN" && (
+                        <button onClick={() => navigate("/punch/manage-users")} className={buttonStyle}>
+                            👥 Manage Users
+                        </button>
+                    )}
                 </div>
             </div>
         </UniversalLayout>

@@ -10,9 +10,8 @@ import {
     where,
     getDocs,
     orderBy,
-    limit,
+    limit
 } from "firebase/firestore";
-
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 // 🔁 Upload file and return URL
@@ -25,7 +24,7 @@ const uploadFileToStorage = async (personName, file, label) => {
     return url;
 };
 
-// 🔢 Generate Auto Employee ID (Head Office only)
+// 🔢 Auto-generate Employee ID for Head Office
 const generateEmployeeID = async () => {
     const q = query(
         collection(db, "registrations"),
@@ -34,64 +33,128 @@ const generateEmployeeID = async () => {
         orderBy("employeeID", "desc"),
         limit(1)
     );
-
     const snapshot = await getDocs(q);
     if (!snapshot.empty) {
         const lastID = snapshot.docs[0].data().employeeID;
         const lastNum = parseInt(lastID?.split("-")[2] || "0");
-        const nextID = `DSK-EMP-${(lastNum + 1).toString().padStart(4, "0")}`;
-        return nextID;
+        return `DSK-EMP-${(lastNum + 1).toString().padStart(4, "0")}`;
     } else {
         return "DSK-EMP-0001";
     }
 };
 
-// ✅ Submit new registration request
-export const submitRegistration = async (data, files) => {
-    const urls = {};
+// ✅ Submit multi-member registration
+export const submitRegistration = async ({ category, siteName, teamName, submittedBy, members }) => {
+    const finalMembers = [];
 
-    if (files.aadhaar) {
-        urls.aadhaarURL = await uploadFileToStorage(data.personName, files.aadhaar, "Aadhaar");
-    }
-    if (files.photo) {
-        urls.photoURL = await uploadFileToStorage(data.personName, files.photo, "Photo");
-    }
-    if (files.pf) {
-        urls.pfURL = await uploadFileToStorage(data.personName, files.pf, "PF");
-    }
-    if (files.pan) {
-        urls.panURL = await uploadFileToStorage(data.personName, files.pan, "PAN");
-    }
+    for (const member of members) {
+        const {
+            personName,
+            aadhaarFile,
+            photoFile,
+            pfFile,
+            panFile
+        } = member;
 
-    // 🆔 Add Employee ID only for Head Office
-    if (data.category === "Head Office") {
-        data.employeeID = await generateEmployeeID();
+        const urls = {};
+        if (aadhaarFile) urls.aadhaarURL = await uploadFileToStorage(personName, aadhaarFile, "Aadhaar");
+        if (photoFile) urls.photoURL = await uploadFileToStorage(personName, photoFile, "Photo");
+        if (pfFile) urls.pfURL = await uploadFileToStorage(personName, pfFile, "PF");
+        if (panFile) urls.panURL = await uploadFileToStorage(personName, panFile, "PAN");
+
+        const employeeID = category === "Head Office" ? await generateEmployeeID() : null;
+
+        finalMembers.push({
+            id: `${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+            personName,
+            ...urls,
+            employeeID
+        });
     }
 
     const docRef = await addDoc(collection(db, "registrations"), {
-        ...data,
-        ...urls,
-        status: "pending",
-        submittedAt: serverTimestamp()
+        category,
+        siteName,
+        teamName,
+        members: finalMembers,
+        submittedBy,
+        submittedAt: serverTimestamp(),
+        status: "pending"
     });
 
     return docRef.id;
 };
 
-// ✅ Fetch all pending approvals
+// ✅ Fetch all pending registrations
 export const fetchPendingRegistrations = async () => {
     const q = query(collection(db, "registrations"), where("status", "==", "pending"));
     const snapshot = await getDocs(q);
     return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 };
 
-// ✅ Approve or Reject with remark
-export const updateRegistrationStatus = async (id, action, remark, reviewedBy) => {
-    const docRef = doc(db, "registrations", id);
-    await updateDoc(docRef, {
+// ✅ Approve/Reject specific member from a group
+export const updateRegistrationStatus = async (parentId, memberId, action, remark, reviewedBy) => {
+    const regRef = doc(db, "registrations", parentId);
+    const snapshot = await getDocs(query(collection(db, "registrations"), where("__name__", "==", parentId)));
+    if (snapshot.empty) return;
+
+    const data = snapshot.docs[0].data();
+    const members = data.members || [];
+    const target = members.find((m) => m.id === memberId);
+    if (!target) return;
+
+    const approvedDoc = {
+        ...target,
+        parentId,
+        category: data.category,
+        siteName: data.siteName || null,
+        teamName: data.teamName || null,
         status: action,
+        remark,
         reviewedBy,
-        reviewedAt: serverTimestamp(),
-        remark
+        reviewedAt: serverTimestamp()
+    };
+
+    await addDoc(collection(db, "approved_members"), approvedDoc);
+
+    const updatedMembers = members.filter((m) => m.id !== memberId);
+    await updateDoc(regRef, { members: updatedMembers });
+
+    if (updatedMembers.length === 0) {
+        await updateDoc(regRef, { status: "processed" });
+    }
+};
+
+// ✅ Get all users from Firestore
+export const getAllUsers = async () => {
+    const snapshot = await getDocs(collection(db, "users"));
+    return snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
+};
+
+// ✅ Get all site names from Firestore
+export const getAllSites = async () => {
+    const snapshot = await getDocs(collection(db, "sites"));
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
+// ✅ Get all team names from Firestore
+export const getAllTeams = async () => {
+    const snapshot = await getDocs(collection(db, "teams"));
+    return snapshot.docs.map(doc => doc.data().teamName);
+};
+
+// ✅ Update site, team, role, and status for a user
+export const updateUserAssignment = async (uid, data) => {
+    const ref = doc(db, "users", uid);
+    const isActive = data.status === "Active";
+
+    await updateDoc(ref, {
+        sites: data.sites,
+        teams: data.teams,
+        status: data.status,
+        role: data.role,
+        isActive: isActive,
+        lastUpdatedBy: data.lastUpdatedBy,
+        lastUpdatedAt: serverTimestamp()
     });
 };

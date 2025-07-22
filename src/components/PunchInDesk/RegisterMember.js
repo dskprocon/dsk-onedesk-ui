@@ -1,62 +1,94 @@
 // src/components/PunchInDesk/RegisterMember.js
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import UniversalLayout from "../universal/UniversalLayout";
 import { submitRegistration } from "../../firebase/services/punchinService";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../../firebase/firebaseConfig";
+import Select from "react-select";
 
 function RegisterMember({ name, role }) {
-    const [category, setCategory] = useState("Head Office");
-    const [personName, setPersonName] = useState("");
-    const [siteName, setSiteName] = useState("");
-    const [teamName, setTeamName] = useState("");
-    const [aadhaarFile, setAadhaarFile] = useState(null);
-    const [photoFile, setPhotoFile] = useState(null);
-    const [pfFile, setPfFile] = useState(null);
-    const [panFile, setPanFile] = useState(null);
+    const isAdmin = role?.toUpperCase() === "ADMIN";
+
+    const [category, setCategory] = useState("Site");
+    const [siteOptions, setSiteOptions] = useState([]);
+    const [teamOptions, setTeamOptions] = useState([]);
+    const [sites, setSites] = useState([]);
+    const [teams, setTeams] = useState([]);
+    const [members, setMembers] = useState([
+        { personName: "", aadhaar: null, photo: null, pf: null, pan: null }
+    ]);
     const [message, setMessage] = useState("");
+
+    useEffect(() => {
+        if (!isAdmin) {
+            const loadUserAccess = async () => {
+                try {
+                    const ref = doc(db, "users", name);
+                    const snap = await getDoc(ref);
+                    if (snap.exists()) {
+                        const data = snap.data();
+                        const allowedSites = (data.sites || []).map(site => ({ label: site, value: site }));
+                        const allowedTeams = (data.teams || []).map(team => ({ label: team, value: team }));
+                        setSiteOptions(allowedSites);
+                        setTeamOptions(allowedTeams);
+                    }
+                } catch (err) {
+                    console.error("❌ Failed to fetch user profile:", err);
+                }
+            };
+            loadUserAccess();
+        }
+    }, [isAdmin, name]);
+
+    const handleMemberChange = (index, field, value) => {
+        const updated = [...members];
+        updated[index][field] = value;
+        setMembers(updated);
+    };
+
+    const handleAddMember = () => {
+        setMembers([...members, { personName: "", aadhaar: null, photo: null, pf: null, pan: null }]);
+    };
+
+    const handleRemoveMember = (index) => {
+        const updated = [...members];
+        updated.splice(index, 1);
+        setMembers(updated);
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setMessage("");
 
-        if (!personName || !aadhaarFile || !photoFile) {
-            setMessage("❌ Aadhaar and Photo are required.");
+        const invalidMember = members.find(m => !m.personName || !m.aadhaar || !m.photo);
+        if (invalidMember) {
+            setMessage("❌ Aadhaar and Photo are required for each member.");
             return;
         }
 
-        const data = {
-            personName,
-            category,
-            siteName: category === "Site" ? siteName : "",
-            teamName: category === "Site" ? teamName : "",
-            submittedBy: name,
-        };
-
-        const files = {
-            aadhaar: aadhaarFile,
-            photo: photoFile,
-            pf: pfFile,
-            pan: panFile
-        };
-
         try {
-            console.log("🚀 Submitting registration with data:", data);
-            console.log("📎 Attached files:", files);
+            for (const member of members) {
+                const data = {
+                    personName: member.personName,
+                    category,
+                    sites: sites.map(s => s.value),
+                    teams: teams.map(t => t.value),
+                    submittedBy: name
+                };
+                const files = {
+                    aadhaar: member.aadhaar,
+                    photo: member.photo,
+                    pf: member.pf,
+                    pan: member.pan
+                };
+                await submitRegistration(data, files);
+            }
 
-            await submitRegistration(data, files);
-
-            setMessage("✅ Submitted for admin approval.");
-
-            // Reset
-            setPersonName("");
-            setSiteName("");
-            setTeamName("");
-            setAadhaarFile(null);
-            setPhotoFile(null);
-            setPfFile(null);
-            setPanFile(null);
-
-            console.log("✅ Submission completed.");
+            setMessage("✅ All members submitted for approval.");
+            setMembers([{ personName: "", aadhaar: null, photo: null, pf: null, pan: null }]);
+            setSites([]);
+            setTeams([]);
         } catch (err) {
             console.error("❌ Submission failed:", err);
             setMessage("❌ Submission failed. Try again.");
@@ -65,104 +97,145 @@ function RegisterMember({ name, role }) {
 
     return (
         <UniversalLayout name={name} role={role}>
-            <div className="max-w-2xl mx-auto px-4">
-                <h2 className="text-2xl font-bold text-center mb-6">👤 Register Member</h2>
+            <div className="max-w-3xl mx-auto px-4">
+                <h2 className="text-2xl font-bold text-center mb-6">👤 Register Members</h2>
+
                 {message && (
-                    <p
-                        className={`text-center font-semibold mb-4 ${
-                            message.startsWith("✅") ? "text-green-600" : "text-red-600"
-                        }`}
-                    >
+                    <p className={`text-center font-semibold mb-4 ${message.startsWith("✅") ? "text-green-600" : "text-red-600"}`}>
                         {message}
                     </p>
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* Category */}
-                    <div>
-                        <label className="block font-medium mb-1">Category:</label>
-                        <select
-                            value={category}
-                            onChange={(e) => setCategory(e.target.value)}
-                            className="w-full border border-gray-400 px-3 py-2 rounded"
-                        >
-                            <option value="Head Office">Head Office</option>
-                            <option value="Site">Site</option>
-                        </select>
-                    </div>
+                    {/* Category (Admin Only) */}
+                    {isAdmin ? (
+                        <div>
+                            <label className="block font-medium mb-1">Category:</label>
+                            <select
+                                value={category}
+                                onChange={(e) => setCategory(e.target.value)}
+                                className="w-full border border-gray-400 px-3 py-2 rounded"
+                            >
+                                <option value="Head Office">Head Office</option>
+                                <option value="Site">Site</option>
+                            </select>
+                        </div>
+                    ) : (
+                        <div>
+                            <label className="block font-medium mb-1">Category:</label>
+                            <input
+                                value="Site"
+                                disabled
+                                className="w-full border border-gray-400 px-3 py-2 rounded bg-gray-100"
+                            />
+                        </div>
+                    )}
 
-                    {/* Site Details */}
+                    {/* Site & Team Selection */}
                     {category === "Site" && (
                         <>
                             <div>
-                                <label className="block font-medium mb-1">Site Name:</label>
-                                <input
-                                    type="text"
-                                    value={siteName}
-                                    onChange={(e) => setSiteName(e.target.value)}
-                                    className="w-full border border-gray-400 px-3 py-2 rounded"
+                                <label className="block font-medium mb-1">Select Site(s):</label>
+                                <Select
+                                    isMulti
+                                    placeholder="Select site(s)"
+                                    value={sites}
+                                    onChange={setSites}
+                                    options={isAdmin ? [] : siteOptions}
+                                    isClearable
+                                    isSearchable
+                                    classNamePrefix="select"
                                 />
                             </div>
                             <div>
-                                <label className="block font-medium mb-1">Team Name:</label>
-                                <input
-                                    type="text"
-                                    value={teamName}
-                                    onChange={(e) => setTeamName(e.target.value)}
-                                    className="w-full border border-gray-400 px-3 py-2 rounded"
+                                <label className="block font-medium mb-1">Select Team(s):</label>
+                                <Select
+                                    isMulti
+                                    placeholder="Select team(s)"
+                                    value={teams}
+                                    onChange={setTeams}
+                                    options={isAdmin ? [] : teamOptions}
+                                    isClearable
+                                    isSearchable
+                                    classNamePrefix="select"
                                 />
                             </div>
                         </>
                     )}
 
-                    {/* Person Name */}
-                    <div>
-                        <label className="block font-medium mb-1">Person Name:</label>
-                        <input
-                            type="text"
-                            value={personName}
-                            onChange={(e) => setPersonName(e.target.value)}
-                            className="w-full border border-gray-400 px-3 py-2 rounded"
-                        />
+                    {/* Members Block */}
+                    {members.map((member, index) => (
+                        <div key={index} className="border border-gray-300 rounded-lg p-4 bg-white shadow-sm space-y-4">
+                            <h4 className="text-md font-semibold">👤 Member {index + 1}</h4>
+                            <div>
+                                <label className="block font-medium mb-1">Person Name:</label>
+                                <input
+                                    type="text"
+                                    value={member.personName}
+                                    onChange={(e) => handleMemberChange(index, "personName", e.target.value)}
+                                    className="w-full border border-gray-400 px-3 py-2 rounded"
+                                />
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block font-medium mb-1">Aadhaar (Required):</label>
+                                    <input
+                                        type="file"
+                                        onChange={(e) => handleMemberChange(index, "aadhaar", e.target.files[0])}
+                                        className="w-full border border-gray-400 px-3 py-2 rounded"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block font-medium mb-1">Photo (Required):</label>
+                                    <input
+                                        type="file"
+                                        onChange={(e) => handleMemberChange(index, "photo", e.target.files[0])}
+                                        className="w-full border border-gray-400 px-3 py-2 rounded"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block font-medium mb-1">PF Declaration:</label>
+                                    <input
+                                        type="file"
+                                        onChange={(e) => handleMemberChange(index, "pf", e.target.files[0])}
+                                        className="w-full border border-gray-400 px-3 py-2 rounded"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block font-medium mb-1">PAN Card:</label>
+                                    <input
+                                        type="file"
+                                        onChange={(e) => handleMemberChange(index, "pan", e.target.files[0])}
+                                        className="w-full border border-gray-400 px-3 py-2 rounded"
+                                    />
+                                </div>
+                            </div>
+                            {members.length > 1 && (
+                                <div className="text-right">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveMember(index)}
+                                        className="text-red-600 text-sm underline"
+                                    >
+                                        ❌ Remove This Member
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+
+                    {/* Add Member Button */}
+                    <div className="text-center">
+                        <button
+                            type="button"
+                            onClick={handleAddMember}
+                            className="text-sm font-medium text-blue-700 underline"
+                        >
+                            ➕ Add Another Member
+                        </button>
                     </div>
 
-                    {/* File Uploads 2x2 Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block font-medium mb-1">Aadhaar (Required):</label>
-                            <input
-                                type="file"
-                                onChange={(e) => setAadhaarFile(e.target.files[0])}
-                                className="w-full border border-gray-400 px-3 py-2 rounded"
-                            />
-                        </div>
-                        <div>
-                            <label className="block font-medium mb-1">Photo (Required):</label>
-                            <input
-                                type="file"
-                                onChange={(e) => setPhotoFile(e.target.files[0])}
-                                className="w-full border border-gray-400 px-3 py-2 rounded"
-                            />
-                        </div>
-                        <div>
-                            <label className="block font-medium mb-1">PF Declaration:</label>
-                            <input
-                                type="file"
-                                onChange={(e) => setPfFile(e.target.files[0])}
-                                className="w-full border border-gray-400 px-3 py-2 rounded"
-                            />
-                        </div>
-                        <div>
-                            <label className="block font-medium mb-1">PAN Card:</label>
-                            <input
-                                type="file"
-                                onChange={(e) => setPanFile(e.target.files[0])}
-                                className="w-full border border-gray-400 px-3 py-2 rounded"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Submit Button */}
+                    {/* Submit */}
                     <div className="pt-4 text-center">
                         <button
                             type="submit"

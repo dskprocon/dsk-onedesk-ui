@@ -4,8 +4,8 @@ import { fetchPendingRegistrations, updateRegistrationStatus } from "../../fireb
 
 function RegisterApproval({ name, role }) {
     const [pendingList, setPendingList] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [remarks, setRemarks] = useState({});
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         loadPending();
@@ -18,9 +18,16 @@ function RegisterApproval({ name, role }) {
         setLoading(false);
     };
 
-    const handleAction = async (id, action) => {
-        await updateRegistrationStatus(id, action, remarks[id] || "", name);
-        setPendingList(prev => prev.filter(item => item.id !== id));
+    const handleAction = async (parentId, memberId, action) => {
+        await updateRegistrationStatus(parentId, memberId, action, remarks[memberId] || "", name);
+        // Filter out only the processed member
+        setPendingList(prev =>
+            prev.map(entry =>
+                entry.id === parentId
+                    ? { ...entry, members: entry.members.filter(mem => mem.id !== memberId) }
+                    : entry
+            ).filter(entry => entry.members.length > 0)
+        );
     };
 
     if (role?.toUpperCase() !== "ADMIN") {
@@ -41,73 +48,79 @@ function RegisterApproval({ name, role }) {
                 ) : pendingList.length === 0 ? (
                     <p className="text-center text-green-600 font-semibold">✅ No pending requests.</p>
                 ) : (
-                    <div className="space-y-6">
+                    <div className="space-y-10">
                         {pendingList.map((entry) => (
-                            <div key={entry.id} className="bg-white shadow-md rounded-xl p-4 border border-gray-300">
-                                {/* Basic Info */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-800">
-                                    <div><strong>Name:</strong> {entry.personName}</div>
-                                    <div><strong>Category:</strong> {entry.category}</div>
-                                    {entry.category === "Site" && (
-                                        <>
-                                            <div><strong>Site:</strong> {entry.siteName}</div>
-                                            <div><strong>Team:</strong> {entry.teamName}</div>
-                                        </>
-                                    )}
-                                    <div><strong>Submitted By:</strong> {entry.submittedBy}</div>
-                                    <div><strong>Submitted At:</strong> {entry.submittedAt?.toDate().toLocaleString()}</div>
+                            <div key={entry.id} className="bg-gray-100 p-4 rounded-xl border border-gray-400 shadow-sm">
+                                <div className="text-sm text-gray-700 mb-3">
+                                    <strong>Submitted By:</strong> {entry.submittedBy} <br />
+                                    <strong>Submitted At:</strong> {entry.submittedAt?.toDate().toLocaleString()}
                                 </div>
 
-                                {/* 📄 Document Preview */}
-                                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                                    {entry.aadhaarURL && (
-                                        <a href={entry.aadhaarURL} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-                                            📄 Aadhaar
-                                        </a>
-                                    )}
-                                    {entry.photoURL && (
-                                        <a href={entry.photoURL} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-                                            🖼️ Photo
-                                        </a>
-                                    )}
-                                    {entry.pfURL && (
-                                        <a href={entry.pfURL} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-                                            📑 PF Declaration
-                                        </a>
-                                    )}
-                                    {entry.panURL && (
-                                        <a href={entry.panURL} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-                                            🧾 PAN Card
-                                        </a>
-                                    )}
-                                </div>
+                                {entry.members.map((mem) => (
+                                    <div key={mem.id} className="bg-white p-4 mb-6 rounded-lg border border-gray-300 shadow-sm">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-800">
+                                            <div><strong>Name:</strong> {mem.personName}</div>
+                                            <div><strong>Category:</strong> {entry.category}</div>
+                                            {entry.category === "Site" && (
+                                                <>
+                                                    <div><strong>Site:</strong> {entry.siteName}</div>
+                                                    <div><strong>Team:</strong> {entry.teamName}</div>
+                                                </>
+                                            )}
+                                        </div>
 
-                                {/* ✏️ Remark Field */}
-                                <div className="mt-4">
-                                    <label className="block text-sm font-medium mb-1">Remark:</label>
-                                    <input
-                                        type="text"
-                                        value={remarks[entry.id] || ""}
-                                        onChange={(e) => setRemarks({ ...remarks, [entry.id]: e.target.value })}
-                                        className="w-full border border-gray-400 px-3 py-2 rounded"
-                                    />
-                                </div>
+                                        {/* 📄 Document Links */}
+                                        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                                            {mem.aadhaarURL && (
+                                                <a href={mem.aadhaarURL} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+                                                    📄 Aadhaar
+                                                </a>
+                                            )}
+                                            {mem.photoURL && (
+                                                <a href={mem.photoURL} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+                                                    🖼️ Photo
+                                                </a>
+                                            )}
+                                            {mem.pfURL && (
+                                                <a href={mem.pfURL} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+                                                    📑 PF Declaration
+                                                </a>
+                                            )}
+                                            {mem.panURL && (
+                                                <a href={mem.panURL} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+                                                    🧾 PAN Card
+                                                </a>
+                                            )}
+                                        </div>
 
-                                {/* ✅❌ Action Buttons */}
-                                <div className="mt-4 flex flex-wrap gap-4">
-                                    <button
-                                        onClick={() => handleAction(entry.id, "approved")}
-                                        className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-                                    >
-                                        ✅ Approve
-                                    </button>
-                                    <button
-                                        onClick={() => handleAction(entry.id, "rejected")}
-                                        className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-                                    >
-                                        ❌ Reject
-                                    </button>
-                                </div>
+                                        {/* 📝 Remark Input */}
+                                        <div className="mt-4">
+                                            <label className="block text-sm font-medium mb-1">Remark:</label>
+                                            <input
+                                                type="text"
+                                                value={remarks[mem.id] || ""}
+                                                onChange={(e) => setRemarks({ ...remarks, [mem.id]: e.target.value })}
+                                                className="w-full border border-gray-400 px-3 py-2 rounded"
+                                            />
+                                        </div>
+
+                                        {/* ✅❌ Buttons */}
+                                        <div className="mt-4 flex flex-wrap gap-4">
+                                            <button
+                                                onClick={() => handleAction(entry.id, mem.id, "approved")}
+                                                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                                            >
+                                                ✅ Approve
+                                            </button>
+                                            <button
+                                                onClick={() => handleAction(entry.id, mem.id, "rejected")}
+                                                className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+                                            >
+                                                ❌ Reject
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         ))}
                     </div>

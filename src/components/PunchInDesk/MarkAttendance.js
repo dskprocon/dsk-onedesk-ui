@@ -2,7 +2,16 @@
 import React, { useEffect, useState } from "react";
 import UniversalLayout from "../universal/UniversalLayout";
 import { db } from "../../firebase/firebaseConfig";
-import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
+import {
+    collection,
+    getDocs,
+    addDoc,
+    serverTimestamp,
+    query,
+    where,
+    doc,
+    getDoc,
+} from "firebase/firestore";
 import axios from "axios";
 import Select from "react-select";
 
@@ -12,6 +21,8 @@ function MarkAttendance({ name, role }) {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(true);
     const [submitted, setSubmitted] = useState(false);
+    const [markedAlready, setMarkedAlready] = useState(false);
+    const [category, setCategory] = useState("Head Office");
 
     const [allUsers, setAllUsers] = useState([]);
     const [selectedPerson, setSelectedPerson] = useState(null);
@@ -32,7 +43,6 @@ function MarkAttendance({ name, role }) {
         return ist.toISOString().split("T")[0];
     }
 
-    // 📍 Get geolocation and best-effort location name
     useEffect(() => {
         if (!navigator.geolocation) {
             setError("❌ Geolocation is not supported by your browser.");
@@ -49,19 +59,12 @@ function MarkAttendance({ name, role }) {
                 setLocation(coords);
 
                 try {
-                    const res = await axios.get("https://ipinfo.io/json?token=27a947cad2a497");
-                    const city = res.data.city || "";
-                    const region = res.data.region || "";
-                    const country = res.data.country || "";
-
-                    const full = `${city}, ${region}, ${country}`.trim().replace(/^,+|,+$/g, "");
-
-                    if (full === "" || full === ",,") {
-                        setLocationName(`${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`);
-                    } else {
-                        setLocationName(full);
-                    }
+                    const gmapURL = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${coords.lat},${coords.lng}&key=AIzaSyBsZ9r3G8E23YLZgNHN2iEotwgevaUtcEQ`;
+                    const res = await axios.get(gmapURL);
+                    const results = res.data.results;
+                    setLocationName(results?.[0]?.formatted_address || `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`);
                 } catch (err) {
+                    console.error("⚠️ Google Maps API Error:", err);
                     setLocationName(`${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`);
                 }
 
@@ -75,7 +78,6 @@ function MarkAttendance({ name, role }) {
         );
     }, []);
 
-    // 👥 Fetch all users from Firestore
     useEffect(() => {
         if (role === "ADMIN") {
             const fetchUsers = async () => {
@@ -99,6 +101,9 @@ function MarkAttendance({ name, role }) {
     }, [role]);
 
     const handleSubmit = async () => {
+        setError("");
+        setMarkedAlready(false);
+
         if (!location) {
             setError("❌ Location not available. Cannot submit.");
             return;
@@ -113,9 +118,34 @@ function MarkAttendance({ name, role }) {
         const timeIn = selectedTime;
         const isLate = timeIn > "09:35";
 
+        const duplicateCheck = query(
+            collection(db, "attendance"),
+            where("personName", "==", personName),
+            where("date", "==", selectedDate)
+        );
+        const snap = await getDocs(duplicateCheck);
+        if (!snap.empty) {
+            setMarkedAlready(true);
+            setError(`❌ Already marked for ${personName} on ${selectedDate}.`);
+            return;
+        }
+
+        let detectedCategory = "Head Office";
+        try {
+            const userDoc = await getDoc(doc(db, "users", personName));
+            if (userDoc.exists()) {
+                const userData = userDoc.data();
+                if (userData.category === "Site") detectedCategory = "Site";
+            }
+        } catch (err) {
+            console.warn("⚠️ Failed to fetch user category.");
+        }
+
+        setCategory(detectedCategory);
+
         const data = {
             personName,
-            category: role === "ADMIN" ? "Head Office" : "Site",
+            category: detectedCategory,
             siteName: "",
             teamName: "",
             timeIn,
@@ -124,11 +154,17 @@ function MarkAttendance({ name, role }) {
             location,
             locationName,
             status: "pending",
+            markedBy: name, // ✅ NEW FIELD
             markedAt: serverTimestamp()
         };
 
-        await addDoc(collection(db, "attendance"), data);
-        setSubmitted(true);
+        try {
+            await addDoc(collection(db, "attendance"), data);
+            setSubmitted(true);
+        } catch (err) {
+            console.error("❌ Error saving attendance:", err);
+            setError("Failed to save attendance. Please try again.");
+        }
     };
 
     return (
@@ -141,12 +177,23 @@ function MarkAttendance({ name, role }) {
                 ) : error ? (
                     <p className="text-center text-red-600 font-semibold">{error}</p>
                 ) : submitted ? (
-                    <p className="text-center text-green-600 font-semibold">
-                        ✅ Attendance marked successfully for{" "}
-                        {role === "ADMIN" ? selectedPerson?.value : name} on {selectedDate}.
-                    </p>
+                    <div className="text-center text-green-600 font-semibold space-y-2">
+                        <p>✅ Attendance marked successfully for <span className="font-bold">{role === "ADMIN" ? selectedPerson?.value : name}</span> on <span className="font-bold">{selectedDate}</span>.</p>
+                        <p>
+                            Category:{" "}
+                            <span className={`inline-block px-3 py-1 rounded-full text-white text-sm font-semibold ${category === "Head Office" ? "bg-green-600" : "bg-orange-500"}`}>
+                                {category}
+                            </span>
+                        </p>
+                    </div>
                 ) : (
                     <div className="space-y-6 text-left">
+                        {markedAlready && (
+                            <div className="text-red-600 font-semibold text-center">
+                                ❌ Already marked today for {role === "ADMIN" ? selectedPerson?.value : name}
+                            </div>
+                        )}
+
                         {role === "ADMIN" && (
                             <>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">👤 Select Person:</label>
@@ -177,13 +224,11 @@ function MarkAttendance({ name, role }) {
                             </>
                         )}
 
-                        {role !== "ADMIN" && (
-                            <p className="text-gray-700 font-medium">
-                                Your location is captured ✅
-                                <br />
-                                <span className="text-sm text-gray-500">{locationName}</span>
-                            </p>
-                        )}
+                        <p className="text-gray-700 font-medium">
+                            Your location is captured ✅
+                            <br />
+                            <span className="text-sm text-gray-500">{locationName}</span>
+                        </p>
 
                         <button
                             onClick={handleSubmit}

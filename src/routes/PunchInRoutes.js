@@ -8,6 +8,7 @@ import MarkAttendance from "../components/PunchInDesk/MarkAttendance";
 import ApproveAttendance from "../components/PunchInDesk/ApproveAttendance";
 import SummaryReport from "../components/PunchInDesk/SummaryReport";
 import ViewAttendance from "../components/PunchInDesk/ViewAttendance";
+import ManageUsers from "../components/PunchInDesk/ManageUsers";
 
 const punchInRoutes = (name, role) => (
   <>
@@ -18,6 +19,7 @@ const punchInRoutes = (name, role) => (
     <Route path="/punch/att-approval" element={<ApproveAttendance name={name} role={role} />} />
     <Route path="/punch/report" element={<SummaryReport name={name} role={role} />} />
     <Route path="/punch/view" element={<ViewAttendance name={name} role={role} />} />
+    <Route path="/punch/manage-users" element={<ManageUsers name={name} role={role} />} />
   </>
 );
 
