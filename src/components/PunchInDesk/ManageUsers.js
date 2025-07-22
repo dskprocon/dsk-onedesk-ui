@@ -7,7 +7,7 @@ import {
     getAllTeams,
     updateUserAssignment,
 } from "../../firebase/services/punchinService";
-import AssignSiteModal from "./AssignSiteModal";
+import AssignSiteModal from './AssignSiteProModal';
 
 function ManageUsers({ name, role }) {
     const [users, setUsers] = useState([]);
