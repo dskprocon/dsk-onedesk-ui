@@ -1,35 +1,91 @@
 // src/components/PunchInDesk/PunchInDesk.js
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import UniversalLayout from "../universal/UniversalLayout";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "../../firebase/firebaseConfig";
+import { format } from "date-fns";
 
 function PunchInDesk({ name, role }) {
-  const navigate = useNavigate();
-  const buttonStyle =
-    "w-full max-w-sm sm:max-w-md md:max-w-lg mx-auto bg-gradient-to-br from-[#2F2F2F] to-[#505050] text-white px-4 py-4 rounded-2xl shadow-xl text-base sm:text-lg font-semibold text-center hover:scale-105 hover:shadow-2xl transition-all duration-200";
+    const navigate = useNavigate();
+    const [markedToday, setMarkedToday] = useState(null); // null = loading, true/false = result
 
-  return (
-    <UniversalLayout name={name} role={role} title="Punch In Desk">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 w-full max-w-4xl mx-auto mt-10">
-        <button onClick={() => navigate("/punch/register")} className={buttonStyle}>
-          👤 Register Member
-        </button>
-        <button disabled className={buttonStyle + " opacity-50 cursor-not-allowed"}>
-          📝 Mark Attendance
-          <div className="text-sm mt-1">(Coming in Phase-2)</div>
-        </button>
-        <button disabled className={buttonStyle + " opacity-50 cursor-not-allowed"}>
-          📅 View Attendance
-        </button>
-        <button disabled className={buttonStyle + " opacity-50 cursor-not-allowed"}>
-          📁 Document Viewer
-        </button>
-        <button disabled className={buttonStyle + " opacity-50 cursor-not-allowed"}>
-          📊 Reports
-        </button>
-      </div>
-    </UniversalLayout>
-  );
+    const buttonStyle =
+        "relative w-full max-w-sm sm:max-w-md md:max-w-lg mx-auto bg-gradient-to-br from-[#2F2F2F] to-[#505050] text-white px-4 py-4 rounded-2xl shadow-xl text-base sm:text-lg font-semibold text-center hover:scale-105 hover:shadow-2xl transition-all duration-200";
+
+    const disabledStyle = buttonStyle + " opacity-50 cursor-not-allowed";
+
+    useEffect(() => {
+        const checkAttendance = async () => {
+            const today = format(new Date(), "yyyy-MM-dd");
+            const q = query(
+                collection(db, "attendance"),
+                where("personName", "==", name),
+                where("date", "==", today)
+            );
+            const snapshot = await getDocs(q);
+            setMarkedToday(!snapshot.empty);
+        };
+
+        if (name) checkAttendance();
+    }, [name]);
+
+    return (
+        <UniversalLayout name={name} role={role} title="Punch In Desk">
+            <div className="max-w-5xl mx-auto px-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+
+                    {/* ✅ 1. Mark Attendance (with green/red dot) */}
+                    <button
+                        onClick={() => navigate("/punch/mark")}
+                        className={buttonStyle}
+                    >
+                        📝 Mark Attendance
+                        {markedToday === true && (
+                            <span className="absolute top-2 right-4 w-3 h-3 bg-green-500 rounded-full" title="Marked Today"></span>
+                        )}
+                        {markedToday === false && (
+                            <span className="absolute top-2 right-4 w-3 h-3 bg-red-500 rounded-full" title="Not Marked"></span>
+                        )}
+                    </button>
+
+                    {/* 2. View Attendance */}
+                    <button onClick={() => navigate("/punch/view")} className={buttonStyle}>
+                        📅 View Attendance
+                    </button>
+
+                    {/* 3. Document Viewer */}
+                    <button disabled className={disabledStyle}>
+                        📁 Document Viewer
+                    </button>
+
+                    {/* 4. Reports */}
+                    <button onClick={() => navigate("/punch/report")} className={buttonStyle}>
+                        📊 Reports
+                    </button>
+
+                    {/* 5. Register Member */}
+                    <button onClick={() => navigate("/punch/register")} className={buttonStyle}>
+                        👤 Register Member
+                    </button>
+
+                    {/* 6. Approval Requests – Only for ADMIN */}
+                    {role?.toUpperCase() === "ADMIN" && (
+                        <button onClick={() => navigate("/punch/approval")} className={buttonStyle}>
+                            ✅ Approval Requests
+                        </button>
+                    )}
+
+                    {/* 7. Attendance Approval – ADMIN only */}
+                    {role?.toUpperCase() === "ADMIN" && (
+                        <button onClick={() => navigate("/punch/att-approval")} className={buttonStyle}>
+                            🧾 Approve Attendance
+                        </button>
+                    )}
+                </div>
+            </div>
+        </UniversalLayout>
+    );
 }
 
 export default PunchInDesk;

@@ -1,20 +1,18 @@
-// navigationHelper.js
-
-let goHomeFunction = null;
-let goBackFunction = null;
+let goHome = () => {};
+let goBack = () => {};
 
 export const setGoHome = (fn) => {
-    goHomeFunction = fn;
+  goHome = fn;
 };
 
 export const setGoBack = (fn) => {
-    goBackFunction = fn;
+  goBack = fn;
 };
 
 export const triggerGoHome = () => {
-    if (goHomeFunction) goHomeFunction();
+  goHome();
 };
 
 export const triggerGoBack = () => {
-    if (goBackFunction) goBackFunction();
+  goBack();
 };

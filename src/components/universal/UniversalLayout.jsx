@@ -39,7 +39,6 @@ function UniversalLayout({
                                 <p className="text-sm text-gray-600 mt-1">
                                         Logged in as: <span className="font-semibold">{name}</span> | Role: {role?.toUpperCase()}
                                 </p>
-                                <h2 className="text-xl sm:text-2xl font-semibold text-[#2F2F2F] mt-2">{title}</h2>
                         </div>
 
                         {/* 📦 Page Content */}

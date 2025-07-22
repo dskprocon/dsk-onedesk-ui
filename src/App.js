@@ -71,7 +71,7 @@ function App() {
   useEffect(() => {
     setLogoutFunction(handleLogout);
     setGoHome(() => navigate("/home"));
-    setGoBack(() => navigate("/expense"));
+    setGoBack(() => navigate(-1));
   }, [navigate]);
 
   return (
