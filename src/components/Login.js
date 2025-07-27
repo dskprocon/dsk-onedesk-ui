@@ -1,6 +1,8 @@
+// src/components/Login.js
+
 import React, { useState } from "react";
 import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
-import { getFirestore, doc, getDoc } from "firebase/firestore";
+import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
 import app from "../firebase/firebaseConfig";
 
 const auth = getAuth(app);
@@ -16,11 +18,14 @@ function Login({ onLogin }) {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            const userDoc = await getDoc(doc(db, "users", email));
-            if (userDoc.exists()) {
-                const userData = userDoc.data();
-                const role = userData.role;
-                const name = userData.name;
+            // 🔁 Firestore role fetch by email (not doc ID)
+            const q = query(collection(db, "users"), where("email", "==", email));
+            const snapshot = await getDocs(q);
+
+            if (!snapshot.empty) {
+                const userData = snapshot.docs[0].data();
+                const role = userData.role || "USER";
+                const name = userData.name || "";
                 onLogin({ email, name, role });
             } else {
                 setError("⚠️ User role not found in Firestore.");
@@ -39,12 +44,12 @@ function Login({ onLogin }) {
 
     return (
         <div className="min-h-screen bg-[#FAFAFA] flex flex-col justify-start items-center px-4 pt-[8vh] pb-8">
-                {/* 🔷 Logo */}
-                <img src="/dsk_logo.png" alt="DSK Logo" className="w-24 h-24 mb-3" />
+            {/* 🔷 Logo */}
+            <img src="/dsk_logo.png" alt="DSK Logo" className="w-24 h-24 mb-3" />
 
-                {/* 🔷 Heading */}
-                <h1 className="text-3xl font-bold text-[#1F1F1F] text-center">OneDesk Pro</h1>
-                <p className="text-sm text-gray-600 mb-6 text-center">by DSK Procon</p>
+            {/* 🔷 Heading */}
+            <h1 className="text-3xl font-bold text-[#1F1F1F] text-center">OneDesk Pro</h1>
+            <p className="text-sm text-gray-600 mb-6 text-center">by DSK Procon</p>
 
             {/* 🔷 Login Box */}
             <div className="bg-white rounded-lg shadow-md p-6 w-full max-w-sm space-y-4 mt-2">

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { triggerGoBack, triggerGoHome } from "../../utils/navigationHelper";
 import { triggerLogout } from "../../utils/logoutHelper";
 import useOrientation from "../../hooks/useOrientation";
@@ -11,7 +12,6 @@ function UniversalLayout({
         title = "OneDesk",
         name = "",
         role = "",
-        isRootPage = false,
         hideNavButtons = false,
         children
 }) {
@@ -19,6 +19,9 @@ function UniversalLayout({
         const isLandscape = orientation === "landscape";
 
         const [attendanceStatus, setAttendanceStatus] = useState(null); // null = loading, false = not marked, object = marked
+        const location = useLocation();
+        const pathname = location.pathname;
+        const isHomeScreen = pathname === "/home" || pathname === "/";
 
         useEffect(() => {
                 const checkTodayAttendance = async () => {
@@ -44,6 +47,9 @@ function UniversalLayout({
 
                 checkTodayAttendance();
         }, [name]);
+
+        // Determine screen level based on path depth
+        const pathDepth = pathname.split("/").filter(Boolean).length;
 
         return (
                 <div className="min-h-screen flex flex-col justify-start bg-[#f6f6f6] pt-20 pb-4 px-4 relative">
@@ -90,21 +96,32 @@ function UniversalLayout({
                         </div>
 
                         {/* 🏠 Home + 🔙 Back Buttons */}
-                        {!hideNavButtons && (
+                        {!hideNavButtons && !isHomeScreen && (
                                 <div className="mt-12 flex justify-center gap-6">
-                                        <button
-                                                onClick={triggerGoHome}
-                                                className="bg-[#e0e0e0] hover:bg-[#d0d0d0] text-gray-800 font-semibold px-8 py-2.5 rounded-xl shadow text-base"
-                                        >
-                                                🏠 Home
-                                        </button>
-                                        {!isRootPage && (
+                                        {pathDepth === 1 && (
                                                 <button
-                                                        onClick={triggerGoBack}
+                                                        onClick={triggerGoHome}
                                                         className="bg-[#e0e0e0] hover:bg-[#d0d0d0] text-gray-800 font-semibold px-8 py-2.5 rounded-xl shadow text-base"
                                                 >
-                                                        🔙 Back
+                                                        🏠 Home
                                                 </button>
+                                        )}
+
+                                        {pathDepth > 1 && (
+                                                <>
+                                                        <button
+                                                                onClick={triggerGoBack}
+                                                                className="bg-[#e0e0e0] hover:bg-[#d0d0d0] text-gray-800 font-semibold px-8 py-2.5 rounded-xl shadow text-base"
+                                                        >
+                                                                🔙 Back
+                                                        </button>
+                                                        <button
+                                                                onClick={triggerGoHome}
+                                                                className="bg-[#e0e0e0] hover:bg-[#d0d0d0] text-gray-800 font-semibold px-8 py-2.5 rounded-xl shadow text-base"
+                                                        >
+                                                                🏠 Home
+                                                        </button>
+                                                </>
                                         )}
                                 </div>
                         )}

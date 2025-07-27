@@ -13,8 +13,6 @@ function PunchInDesk({ name, role }) {
     const buttonStyle =
         "relative w-full max-w-sm sm:max-w-md md:max-w-lg mx-auto bg-gradient-to-br from-[#2F2F2F] to-[#505050] text-white px-4 py-4 rounded-2xl shadow-xl text-base sm:text-lg font-semibold text-center hover:scale-105 hover:shadow-2xl transition-all duration-200";
 
-    const disabledStyle = buttonStyle + " opacity-50 cursor-not-allowed";
-
     useEffect(() => {
         const checkAttendance = async () => {
             const today = format(new Date(), "yyyy-MM-dd");
@@ -54,41 +52,18 @@ function PunchInDesk({ name, role }) {
                         📅 View Attendance
                     </button>
 
-                    {/* 3. Document Viewer */}
-                    <button disabled className={disabledStyle}>
-                        📁 Document Viewer
-                    </button>
-
-                    {/* 4. Reports */}
+                    {/* 3. Reports */}
                     <button onClick={() => navigate("/punch/report")} className={buttonStyle}>
                         📊 Reports
                     </button>
 
-                    {/* 5. Register Member */}
-                    <button onClick={() => navigate("/punch/register")} className={buttonStyle}>
-                        👤 Register Member
-                    </button>
-
-                    {/* 6. Approval Requests – Only for ADMIN */}
-                    {role?.toUpperCase() === "ADMIN" && (
-                        <button onClick={() => navigate("/punch/approval")} className={buttonStyle}>
-                            ✅ Approval Requests
-                        </button>
-                    )}
-
-                    {/* 7. Attendance Approval – ADMIN only */}
+                    {/* 4. Attendance Approval – ADMIN only */}
                     {role?.toUpperCase() === "ADMIN" && (
                         <button onClick={() => navigate("/punch/att-approval")} className={buttonStyle}>
                             🧾 Approve Attendance
                         </button>
                     )}
 
-                    {/* 8. Manage Users – ADMIN only */}
-                    {role?.toUpperCase() === "ADMIN" && (
-                        <button onClick={() => navigate("/punch/manage-users")} className={buttonStyle}>
-                            👥 Manage Users
-                        </button>
-                    )}
                 </div>
             </div>
         </UniversalLayout>
