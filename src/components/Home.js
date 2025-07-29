@@ -14,7 +14,7 @@ function Home({ onLogout, role, name }) {
 
         useEffect(() => {
                 const checkAttendance = async () => {
-                        const today = format(new Date(), "yyyy-MM-dd");
+                        const today = format(new Date(), "dd-MM-yyyy");
                         const q = query(
                                 collection(db, "attendance"),
                                 where("personName", "==", name),

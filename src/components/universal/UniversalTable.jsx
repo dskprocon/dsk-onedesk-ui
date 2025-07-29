@@ -2,14 +2,15 @@
 
 import React, { useState } from "react";
 
-function UniversalTable({ headers = [], rows = [] }) {
+function UniversalTable({ headers = [], rows = [], mobileMode = "scroll" }) {
     const [selectedRow, setSelectedRow] = useState(null);
 
     const isMobile = window.innerWidth < 640;
     const isTablet = window.innerWidth >= 640 && window.innerWidth < 1024;
 
-    // Define priority columns for mobile
+    // Priority columns for compact mode
     const getVisibleHeaders = () => {
+        if (mobileMode === "scroll") return headers; // Show all with scroll
         if (isMobile) return headers.filter(h => ["#", "Name", "Category", "Status", "Actions"].includes(h));
         if (isTablet) return headers.filter(h => !["PF Applicable", "UAN", "Emergency Contact"].includes(h));
         return headers;
@@ -18,8 +19,12 @@ function UniversalTable({ headers = [], rows = [] }) {
     const visibleHeaders = getVisibleHeaders();
 
     return (
-        <div className="overflow-x-auto bg-white rounded-xl shadow border border-gray-400 relative">
-            <table className="w-full text-[15px] text-gray-800 border-collapse min-w-max">
+        <div
+            className={`bg-white rounded-xl shadow border border-gray-400 relative ${
+                mobileMode === "scroll" ? "overflow-x-auto" : ""
+            }`}
+        >
+            <table className="border-collapse min-w-[1000px] w-full text-[15px] text-gray-800">
                 <thead className="bg-gray-100">
                     <tr>
                         {visibleHeaders.map((header, index) => (
@@ -32,13 +37,21 @@ function UniversalTable({ headers = [], rows = [] }) {
                                 {header}
                             </th>
                         ))}
+                        {mobileMode === "compact" && (isMobile || isTablet) && (
+                            <th className="px-5 py-3 text-left uppercase tracking-wide text-[13px] font-bold text-gray-600 border-b border-gray-400">
+                                Details
+                            </th>
+                        )}
                     </tr>
                 </thead>
                 <tbody>
                     {rows.length === 0 ? (
                         <tr>
                             <td
-                                colSpan={visibleHeaders.length}
+                                colSpan={
+                                    visibleHeaders.length +
+                                    (mobileMode === "compact" && (isMobile || isTablet) ? 1 : 0)
+                                }
                                 className="text-center py-6 text-gray-500 border-t border-gray-400"
                             >
                                 No data available
@@ -60,8 +73,7 @@ function UniversalTable({ headers = [], rows = [] }) {
                                     </td>
                                 ))}
 
-                                {/* Details button for hidden columns in mobile/tablet */}
-                                {((isMobile || isTablet) && Object.keys(row).length > visibleHeaders.length) && (
+                                {mobileMode === "compact" && (isMobile || isTablet) && (
                                     <td className="px-5 py-3 border-r border-gray-300">
                                         <button
                                             onClick={() => setSelectedRow(row)}
@@ -81,7 +93,7 @@ function UniversalTable({ headers = [], rows = [] }) {
             {selectedRow && (
                 <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
                     <div className="bg-white rounded-lg shadow-lg max-w-lg w-full p-6">
-                        <h2 className="text-lg font-bold mb-4">Member Details</h2>
+                        <h2 className="text-lg font-bold mb-4">Details</h2>
                         <div className="space-y-2">
                             {headers.map((key, idx) => (
                                 <p key={idx} className="text-sm text-gray-700">
