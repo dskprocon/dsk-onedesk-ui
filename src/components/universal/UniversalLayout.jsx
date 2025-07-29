@@ -1,3 +1,5 @@
+// src/components/universal/UniversalLayout.jsx
+
 import React, { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { triggerGoBack, triggerGoHome } from "../../utils/navigationHelper";
@@ -18,7 +20,7 @@ function UniversalLayout({
         const orientation = useOrientation();
         const isLandscape = orientation === "landscape";
 
-        const [attendanceStatus, setAttendanceStatus] = useState(null); // null = loading, false = not marked, object = marked
+        const [attendanceStatus, setAttendanceStatus] = useState(null);
         const location = useLocation();
         const pathname = location.pathname;
         const isHomeScreen = pathname === "/home" || pathname === "/";
@@ -48,7 +50,6 @@ function UniversalLayout({
                 checkTodayAttendance();
         }, [name]);
 
-        // Determine screen level based on path depth
         const pathDepth = pathname.split("/").filter(Boolean).length;
 
         return (
@@ -76,7 +77,6 @@ function UniversalLayout({
                                         Logged in as: <span className="font-semibold">{name}</span> | Role: {role?.toUpperCase()}
                                 </p>
 
-                                {/* ✅ Attendance Status Bar */}
                                 {attendanceStatus === null ? (
                                         <p className="text-sm text-gray-500 mt-1">Checking attendance...</p>
                                 ) : attendanceStatus === false ? (
@@ -101,7 +101,7 @@ function UniversalLayout({
                                         {pathDepth === 1 && (
                                                 <button
                                                         onClick={triggerGoHome}
-                                                        className="bg-[#e0e0e0] hover:bg-[#d0d0d0] text-gray-800 font-semibold px-8 py-2.5 rounded-xl shadow text-base"
+                                                        className="bg-[#e0e0e0] hover:bg-[#d0d0d0] text-gray-800 font-semibold px-4 sm:px-5 lg:px-6 py-1.5 sm:py-2 text-sm sm:text-base rounded-xl shadow"
                                                 >
                                                         🏠 Home
                                                 </button>
@@ -111,13 +111,13 @@ function UniversalLayout({
                                                 <>
                                                         <button
                                                                 onClick={triggerGoBack}
-                                                                className="bg-[#e0e0e0] hover:bg-[#d0d0d0] text-gray-800 font-semibold px-8 py-2.5 rounded-xl shadow text-base"
+                                                                className="bg-[#e0e0e0] hover:bg-[#d0d0d0] text-gray-800 font-semibold px-4 sm:px-5 lg:px-6 py-1.5 sm:py-2 text-sm sm:text-base rounded-xl shadow"
                                                         >
                                                                 🔙 Back
                                                         </button>
                                                         <button
                                                                 onClick={triggerGoHome}
-                                                                className="bg-[#e0e0e0] hover:bg-[#d0d0d0] text-gray-800 font-semibold px-8 py-2.5 rounded-xl shadow text-base"
+                                                                className="bg-[#e0e0e0] hover:bg-[#d0d0d0] text-gray-800 font-semibold px-4 sm:px-5 lg:px-6 py-1.5 sm:py-2 text-sm sm:text-base rounded-xl shadow"
                                                         >
                                                                 🏠 Home
                                                         </button>

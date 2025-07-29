@@ -3,25 +3,30 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import UniversalLayout from "../universal/UniversalLayout";
+import UniversalDropdown from "../universal/UniversalDropdown";
+import UniversalInput from "../universal/UniversalInput";
+import UniversalTable from "../universal/UniversalTable";
 import { getAllMembers } from "../../firebase/services/registrationService";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../firebase/firebaseConfig";
-import Select from "react-select";
 
 function ManageMembers({ name, role }) {
     const navigate = useNavigate();
+    const isAdmin = role?.toUpperCase() === "ADMIN";
+
     const [members, setMembers] = useState([]);
     const [filtered, setFiltered] = useState([]);
-    const [statusFilter, setStatusFilter] = useState("active");
+    const [loading, setLoading] = useState(true);
+
     const [teamOptions, setTeamOptions] = useState([]);
     const [siteOptions, setSiteOptions] = useState([]);
     const [nameOptions, setNameOptions] = useState([]);
+
     const [selectedName, setSelectedName] = useState(null);
+    const [selectedCategory, setSelectedCategory] = useState(null);
     const [selectedTeam, setSelectedTeam] = useState(null);
     const [selectedSite, setSelectedSite] = useState(null);
-    const [loading, setLoading] = useState(true);
-
-    const isAdmin = role?.toUpperCase() === "ADMIN";
+    const [statusFilter, setStatusFilter] = useState("active");
 
     useEffect(() => {
         if (!isAdmin) return;
@@ -32,27 +37,18 @@ function ManageMembers({ name, role }) {
                 setMembers(all);
                 setFiltered(all);
 
-                const teamSnap = await getDocs(collection(db, "teams"));
-                const teamList = teamSnap.docs.map(doc => ({
-                    label: doc.id,
-                    value: doc.id
-                }));
-                setTeamOptions(teamList);
+                const siteMembers = all.filter(m => m.category !== "Head Office");
 
-                const siteSnap = await getDocs(collection(db, "sites"));
-                const siteList = siteSnap.docs.map(doc => ({
-                    label: doc.data().name,
-                    value: doc.data().name
-                }));
-                setSiteOptions(siteList);
+                const siteNameList = [...new Set(siteMembers.flatMap(m => m.sites || []))];
+                setSiteOptions(siteNameList.map(name => ({ label: name, value: name })));
 
-                const nameList = all.map((m) => ({
-                    label: m.personName,
-                    value: m.personName
-                }));
+                const teamNameList = [...new Set(siteMembers.flatMap(m => m.teams || []))];
+                setTeamOptions(teamNameList.map(name => ({ label: name, value: name })));
+
+                const nameList = all.map((m) => ({ label: m.personName, value: m.personName }));
                 setNameOptions(nameList);
             } catch (err) {
-                console.error("❌ Failed to load members/teams/sites:", err);
+                console.error("❌ Failed to load data:", err);
             } finally {
                 setLoading(false);
             }
@@ -68,6 +64,10 @@ function ManageMembers({ name, role }) {
             result = result.filter(m => m.personName === selectedName.value);
         }
 
+        if (selectedCategory) {
+            result = result.filter(m => m.category === selectedCategory.value);
+        }
+
         if (selectedTeam) {
             result = result.filter(m => (m.teams || []).includes(selectedTeam.value));
         }
@@ -79,13 +79,44 @@ function ManageMembers({ name, role }) {
         if (statusFilter !== "all") {
             result = result.filter(m => {
                 const status = (m.status || "approved").toLowerCase();
-                if (statusFilter === "active") return status === "approved";
-                return status === "relieved";
+                return statusFilter === "active" ? status === "approved" : status === "relieved";
             });
         }
 
         setFiltered(result);
-    }, [selectedName, selectedTeam, selectedSite, statusFilter, members]);
+    }, [selectedName, selectedCategory, selectedTeam, selectedSite, statusFilter, members]);
+
+    const handleClearFilters = () => {
+        setSelectedName(null);
+        setSelectedCategory(null);
+        setSelectedTeam(null);
+        setSelectedSite(null);
+        setStatusFilter("active");
+    };
+
+    const headers = [
+        "#", "Name", "Category", "Site(s)", "Team(s)",
+        "Role", "Email", "Status", "Actions"
+    ];
+
+    const rows = filtered.map((m, index) => ({
+        "#": index + 1,
+        "Name": m.personName,
+        "Category": m.category,
+        "Site(s)": (m.sites || []).join(", "),
+        "Team(s)": (m.teams || []).join(", "),
+        "Role": m.role || "-",
+        "Email": m.email || "-",
+        "Status": (m.status === "approved" ? "Active" : m.status || "-").toUpperCase(),
+        "Actions": (
+            <button
+                onClick={() => navigate(`/control/member/${m.id}`)}
+                className="bg-[#2F2F2F] text-white text-xs px-4 py-1 rounded-full hover:bg-[#1A1A1A]"
+            >
+                🔍 View
+            </button>
+        )
+    }));
 
     if (!isAdmin) {
         return <p className="text-center mt-10 text-red-600 font-semibold">❌ Access Denied</p>;
@@ -94,106 +125,70 @@ function ManageMembers({ name, role }) {
     return (
         <UniversalLayout name={name} role={role}>
             <div className="max-w-7xl mx-auto px-4 pt-6">
-                <h2 className="text-2xl font-bold text-center mb-4">👥 Manage Members</h2>
+                <h2 className="text-2xl font-bold text-center mb-6">👥 Manage Members</h2>
 
-                {/* 🔍 Filter Bar */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-                    <Select
+                {/* 🔍 Filters */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4 mb-6">
+                    <UniversalDropdown
+                        label="Name"
                         options={nameOptions}
                         value={selectedName}
                         onChange={setSelectedName}
-                        placeholder="Search by Name"
-                        isClearable
+                        isMulti={false}
                     />
-                    <Select
+                    <UniversalDropdown
+                        label="Category"
+                        options={[
+                            { label: "Head Office", value: "Head Office" },
+                            { label: "Site", value: "Site" }
+                        ]}
+                        value={selectedCategory}
+                        onChange={setSelectedCategory}
+                        isMulti={false}
+                    />
+                    <UniversalDropdown
+                        label="Team"
                         options={teamOptions}
                         value={selectedTeam}
                         onChange={setSelectedTeam}
-                        placeholder="Search by Team"
-                        isClearable
+                        isMulti={false}
                     />
-                    <Select
+                    <UniversalDropdown
+                        label="Site"
                         options={siteOptions}
                         value={selectedSite}
                         onChange={setSelectedSite}
-                        placeholder="Search by Site"
-                        isClearable
+                        isMulti={false}
                     />
-                    <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="w-full border border-gray-400 px-3 py-2 rounded"
-                    >
-                        <option value="active">Active</option>
-                        <option value="relieved">Relieved</option>
-                        <option value="all">All</option>
-                    </select>
-                    <button
-                        onClick={() => {
-                            setSelectedName(null);
-                            setSelectedTeam(null);
-                            setSelectedSite(null);
-                            setStatusFilter("active");
-                        }}
-                        className="px-4 py-2 text-sm bg-gray-200 hover:bg-gray-300 rounded"
-                    >
-                        Clear Filters
-                    </button>
+                    <div className="mb-4">
+                        <label className="block text-gray-700 font-semibold mb-1">Status</label>
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="w-full border border-gray-400 px-3 py-2 rounded"
+                        >
+                            <option value="active">Active</option>
+                            <option value="relieved">Relieved</option>
+                            <option value="all">All</option>
+                        </select>
+                    </div>
+                    <div className="mb-4 flex items-end">
+                        <button
+                            onClick={handleClearFilters}
+                            className="w-full bg-[#e0e0e0] hover:bg-[#d0d0d0] text-gray-800 font-semibold px-4 py-2 rounded shadow"
+                        >
+                            Clear Filters
+                        </button>
+                    </div>
                 </div>
 
                 {/* 📋 Table */}
-                <div className="overflow-x-auto bg-white rounded shadow-md">
-                    <table className="min-w-full table-auto border border-gray-300">
-                        <thead className="bg-gray-100">
-                            <tr>
-                                <th className="px-4 py-2 border">#</th>
-                                <th className="px-4 py-2 border">Name</th>
-                                <th className="px-4 py-2 border">Category</th>
-                                <th className="px-4 py-2 border">Site(s)</th>
-                                <th className="px-4 py-2 border">Team(s)</th>
-                                <th className="px-4 py-2 border">Role</th>
-                                <th className="px-4 py-2 border">Email</th>
-                                <th className="px-4 py-2 border">Status</th>
-                                <th className="px-4 py-2 border">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {loading ? (
-                                <tr>
-                                    <td colSpan="9" className="text-center py-4">Loading members...</td>
-                                </tr>
-                            ) : (
-                                filtered.length === 0 ? (
-                                    <tr>
-                                        <td colSpan="9" className="text-center py-4 text-gray-500">No matching members found.</td>
-                                    </tr>
-                                ) : (
-                                    filtered.map((m, index) => (
-                                        <tr key={m.id} className="hover:bg-gray-50">
-                                            <td className="border px-4 py-2">{index + 1}</td>
-                                            <td className="border px-4 py-2 font-medium">{m.personName}</td>
-                                            <td className="border px-4 py-2">{m.category}</td>
-                                            <td className="border px-4 py-2">{(m.sites || []).join(", ")}</td>
-                                            <td className="border px-4 py-2">{(m.teams || []).join(", ")}</td>
-                                            <td className="border px-4 py-2">{m.role || "-"}</td>
-                                            <td className="border px-4 py-2">{m.email || "-"}</td>
-                                            <td className="border px-4 py-2 capitalize">
-                                                {m.status === "approved" ? "Active" : m.status}
-                                            </td>
-                                            <td className="border px-4 py-2 text-center">
-                                                <button
-                                                    onClick={() => navigate(`/control/member/${m.id}`)}
-                                                    className="bg-[#2F2F2F] text-white text-xs px-4 py-1 rounded-full hover:bg-[#1A1A1A]"
-                                                >
-                                                    🔍 View
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )
-                            )}
-                        </tbody>
-                    </table>
+                <div className="bg-white rounded shadow">
+                    {loading ? (
+                        <p className="text-center py-6 text-gray-500">Loading members...</p>
+                    ) : (
+                        <UniversalTable headers={headers} rows={rows} />
+                    )}
                 </div>
             </div>
         </UniversalLayout>

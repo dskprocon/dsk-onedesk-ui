@@ -7,7 +7,8 @@ import AddSite from "../components/ControlDesk/AddSite";
 import ManageMembers from "../components/ControlDesk/ManageMembers";
 import MemberDetails from "../components/ControlDesk/MemberDetails";
 import BulkAssignSiteTeam from "../components/ControlDesk/BulkAssignSiteTeam";
-import AssignSiteTeam from "../components/ControlDesk/AssignSiteTeam"; // ✅ MISSING IMPORT
+import AssignSiteTeam from "../components/ControlDesk/AssignSiteTeam";
+import ModifyMember from "../components/ControlDesk/ModifyMember"; // ✅ NEW
 
 const controlRoutes = (name, role) => (
     <>
@@ -15,10 +16,11 @@ const controlRoutes = (name, role) => (
         <Route path="/control/add-member" element={<AddMember name={name} role={role} />} />
         <Route path="/control/manage-members" element={<ManageMembers name={name} role={role} />} />
         <Route path="/control/member/:id" element={<MemberDetails name={name} role={role} />} />
+        <Route path="/control/modify-member/:id" element={<ModifyMember name={name} role={role} />} /> {/* ✅ NEW */}
         <Route path="/control/add-site" element={<AddSite name={name} role={role} />} />
         <Route path="/control/register-approval" element={<RegisterApproval name={name} role={role} />} />
         <Route path="/control/assign-multi" element={<BulkAssignSiteTeam name={name} role={role} />} />
-        <Route path="/control/assign-site/:id" element={<AssignSiteTeam name={name} role={role} />} /> {/* ✅ ADD THIS */}
+        <Route path="/control/assign-site/:id" element={<AssignSiteTeam name={name} role={role} />} />
     </>
 );
 
