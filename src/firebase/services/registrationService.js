@@ -1,5 +1,4 @@
 // src/firebase/services/registrationService.js
-
 import {
     collection,
     setDoc,
@@ -165,19 +164,62 @@ export const replaceDocument = async (memberName, fileKey, file) => {
     return url;
 };
 
-// ✅ Get All Sites
+// ✅ Get All Sites (Safe for all modules)
 export const getAllSites = async () => {
-    const snapshot = await getDocs(collection(db, "sites"));
-    return snapshot.docs.map(doc => doc.data().name);
+    try {
+        const snapshot = await getDocs(collection(db, "sites"));
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            name: doc.data().name,
+            value: doc.data().name // ✅ added for backward compatibility
+        }));
+    } catch (error) {
+        console.error("Error fetching sites:", error);
+        return [];
+    }
 };
 
-// ✅ Get All Teams
+// ✅ Get All Teams (No conflict in other modules)
 export const getAllTeams = async () => {
-    const snapshot = await getDocs(collection(db, "teams"));
-    return snapshot.docs.map(doc => doc.data().teamName);
+    try {
+        const snapshot = await getDocs(collection(db, "registrations"));
+        const teamSet = new Set();
+        snapshot.docs.forEach(doc => {
+            const data = doc.data();
+            if (Array.isArray(data.teams)) {
+                data.teams.forEach(team => teamSet.add(team));
+            }
+        });
+        return Array.from(teamSet);
+    } catch (error) {
+        console.error("Error fetching teams:", error);
+        return [];
+    }
 };
 
-// ✅ Assign Site with History (New Logic)
+// ✅ Unassign Site and Update History
+export const updateSiteAssignmentHistory = async (memberId, toDate) => {
+    const memberRef = doc(db, "registrations", memberId);
+    const snapshot = await getDoc(memberRef);
+
+    if (snapshot.exists()) {
+        const data = snapshot.data();
+        const siteHistory = data.siteHistory || [];
+
+        // Close any "Present" (null) record
+        const updatedHistory = siteHistory.map(entry =>
+            entry.to === null ? { ...entry, to: toDate } : entry
+        );
+
+        await updateDoc(memberRef, {
+            sites: [],         // remove all site assignments
+            teams: [],         // remove all team assignments
+            siteHistory: updatedHistory
+        });
+    }
+};
+
+// ✅ Assign Site with History (Updated)
 export const assignSiteWithHistory = async (id, newSite, teams, assignedBy, autoUnassign = false) => {
     const ref = doc(db, "registrations", id);
     const snap = await getDoc(ref);
@@ -190,12 +232,7 @@ export const assignSiteWithHistory = async (id, newSite, teams, assignedBy, auto
 
     const siteHistory = member.siteHistory || [];
 
-    // Block if already on different site and not a team leader
-    if (!autoUnassign && currentSite && currentSite !== newSite && !isTeamLeader) {
-        throw new Error(`❌ ${member.personName} is already assigned to "${currentSite}".`);
-    }
-
-    // Close old record
+    // If autoUnassign is enabled → close previous history record
     if (autoUnassign && currentSite && currentSite !== newSite) {
         const last = siteHistory[siteHistory.length - 1];
         if (last && last.to === null) {

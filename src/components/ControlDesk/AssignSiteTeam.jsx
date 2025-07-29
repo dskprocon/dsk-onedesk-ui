@@ -15,6 +15,8 @@ import {
     serverTimestamp
 } from "firebase/firestore";
 import { db } from "../../firebase/firebaseConfig";
+import { showSuccess, showError } from "../../utils/alertUtils";
+import { MapPin, Users, User, ClipboardList } from "lucide-react";
 
 function AssignSiteTeam({ name, role }) {
     const { id } = useParams();
@@ -91,11 +93,11 @@ function AssignSiteTeam({ name, role }) {
                 }
             }
 
-            alert("✅ Site & Team assigned successfully");
+            showSuccess("✅ Site & Team assigned successfully");
             navigate(`/control/member/${id}`, { replace: true });
         } catch (err) {
             console.error("❌ Failed to assign:", err);
-            alert("Error saving site/team");
+            showError("❌ Failed to save site/team");
         }
     };
 
@@ -109,20 +111,22 @@ function AssignSiteTeam({ name, role }) {
     return (
         <UniversalLayout name={name} role={role}>
             <div className="max-w-4xl mx-auto px-4 pt-8">
-                <h2 className="text-3xl font-bold text-center mb-8 text-gray-800">📍 Assign Site & Team</h2>
+                <h2 className="text-2xl font-bold text-center mb-8 flex items-center gap-2 text-gray-800">
+                    <MapPin size={22} /> Assign Site & Team
+                </h2>
 
                 <div className="bg-white p-8 rounded-xl shadow-md border border-gray-300 space-y-8 text-gray-800 text-base">
 
-                    {/* 🔹 Summary of Current Assignment */}
+                    {/* Summary */}
                     <div className="space-y-2">
-                        <p><strong>👤 Member:</strong> {member.personName}</p>
-                        <p><strong>🏷️ Category:</strong> {member.category}</p>
-                        <p><strong>📍 Assigned Sites:</strong> {member.sites?.join(", ") || "-"}</p>
-                        <p><strong>👥 Assigned Team:</strong> {(member.teams || []).join(", ") || "-"}</p>
-                        <p><strong>🧑‍💼 Managed By:</strong> {member.assignedBy || "-"}</p>
+                        <p className="flex items-center gap-2"><User size={16}/> <strong>Member:</strong> {member.personName}</p>
+                        <p className="flex items-center gap-2"><ClipboardList size={16}/> <strong>Category:</strong> {member.category}</p>
+                        <p className="flex items-center gap-2"><MapPin size={16}/> <strong>Assigned Sites:</strong> {member.sites?.join(", ") || "-"}</p>
+                        <p className="flex items-center gap-2"><Users size={16}/> <strong>Assigned Team:</strong> {(member.teams || []).join(", ") || "-"}</p>
+                        <p><strong>Managed By:</strong> {member.assignedBy || "-"}</p>
                     </div>
 
-                    {/* 🔘 Select Sites */}
+                    {/* Select Sites */}
                     <UniversalDropdown
                         label="Select Site(s)"
                         options={siteOptions}
@@ -131,7 +135,7 @@ function AssignSiteTeam({ name, role }) {
                         isMulti
                     />
 
-                    {/* 🔘 Select Team */}
+                    {/* Select Teams */}
                     <UniversalDropdown
                         label="Select Team(s)"
                         options={teamOptions}
@@ -140,19 +144,19 @@ function AssignSiteTeam({ name, role }) {
                         isMulti
                     />
 
-                    {/* 🔘 Action Buttons */}
+                    {/* Action Buttons */}
                     <div className="flex justify-between pt-6">
                         <button
                             onClick={handleCancel}
                             className="bg-[#e0e0e0] hover:bg-[#d0d0d0] text-gray-800 font-semibold px-6 py-2 rounded shadow"
                         >
-                            ❌ Cancel
+                            Cancel
                         </button>
                         <button
                             onClick={handleSave}
                             className="bg-gradient-to-br from-[#2F2F2F] to-[#505050] text-white font-semibold px-6 py-2 rounded-xl shadow hover:scale-105 hover:shadow-2xl transition-all duration-200"
                         >
-                            💾 Save Assignment
+                            Save Assignment
                         </button>
                     </div>
                 </div>

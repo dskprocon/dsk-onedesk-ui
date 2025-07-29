@@ -15,7 +15,7 @@ function PunchInDesk({ name, role }) {
 
     useEffect(() => {
         const checkAttendance = async () => {
-            const today = format(new Date(), "yyyy-MM-dd");
+            const today = format(new Date(), "dd-MM-yyyy"); // ✅ Fixed date format
             const q = query(
                 collection(db, "attendance"),
                 where("personName", "==", name),
@@ -63,7 +63,6 @@ function PunchInDesk({ name, role }) {
                             🧾 Approve Attendance
                         </button>
                     )}
-
                 </div>
             </div>
         </UniversalLayout>

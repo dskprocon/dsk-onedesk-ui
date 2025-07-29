@@ -29,7 +29,7 @@ function UniversalLayout({
                 const checkTodayAttendance = async () => {
                         if (!name) return;
 
-                        const today = format(new Date(), "yyyy-MM-dd");
+                        const today = format(new Date(), "dd-MM-yyyy");
                         const q = query(
                                 collection(db, "attendance"),
                                 where("personName", "==", name),
@@ -51,6 +51,12 @@ function UniversalLayout({
         }, [name]);
 
         const pathDepth = pathname.split("/").filter(Boolean).length;
+
+        const getShortLocation = (fullLocation) => {
+                if (!fullLocation) return "";
+                const split = fullLocation.split(",");
+                return split.slice(0, 2).join(", ").trim();
+        };
 
         return (
                 <div className="min-h-screen flex flex-col justify-start bg-[#f6f6f6] pt-20 pb-4 px-4 relative">
@@ -85,7 +91,7 @@ function UniversalLayout({
                                         </p>
                                 ) : (
                                         <p className="text-sm font-semibold text-green-700 mt-1">
-                                                🟢 Marked at {attendanceStatus.time} – {attendanceStatus.location}
+                                                🟢 Marked at {attendanceStatus.time} – {getShortLocation(attendanceStatus.location)}
                                         </p>
                                 )}
                         </div>

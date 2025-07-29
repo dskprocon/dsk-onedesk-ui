@@ -11,7 +11,6 @@ function MemberFormBlock({ index, member, category, onChange, onRemove, showRemo
         <div className="border border-gray-300 rounded-lg p-4 mb-6 shadow-sm bg-white">
             <h4 className="text-lg font-semibold mb-3">👤 Member {index + 1}</h4>
 
-            {/* Name */}
             <input
                 type="text"
                 placeholder="Full Name"
@@ -20,7 +19,6 @@ function MemberFormBlock({ index, member, category, onChange, onRemove, showRemo
                 className="w-full border border-gray-400 px-3 py-2 rounded mb-3"
             />
 
-            {/* Designation – Only for Head Office */}
             {category === "Head Office" && (
                 <input
                     type="text"
@@ -31,7 +29,111 @@ function MemberFormBlock({ index, member, category, onChange, onRemove, showRemo
                 />
             )}
 
-            {/* Address Fields */}
+            <input
+                type="text"
+                placeholder="Father's Name"
+                value={member.fatherName || ""}
+                onChange={(e) => onChange(index, "fatherName", e.target.value)}
+                className="w-full border border-gray-400 px-3 py-2 rounded mb-3"
+            />
+
+            <div className="grid grid-cols-2 gap-4 mb-3">
+                <div>
+                    <label className="block text-sm mb-1">Gender</label>
+                    <select
+                        value={member.gender || ""}
+                        onChange={(e) => onChange(index, "gender", e.target.value)}
+                        className="w-full border border-gray-400 px-3 py-2 rounded"
+                    >
+                        <option value="">Select</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-sm mb-1">Marital Status</label>
+                    <select
+                        value={member.maritalStatus || ""}
+                        onChange={(e) => onChange(index, "maritalStatus", e.target.value)}
+                        className="w-full border border-gray-400 px-3 py-2 rounded"
+                    >
+                        <option value="">Select</option>
+                        <option value="Single">Single</option>
+                        <option value="Married">Married</option>
+                    </select>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-3">
+                <div>
+                    <label className="block text-sm mb-1">Date of Birth</label>
+                    <input
+                        type="date"
+                        value={member.dateOfBirth || ""}
+                        onChange={(e) => onChange(index, "dateOfBirth", e.target.value)}
+                        className="w-full border border-gray-400 px-3 py-2 rounded"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm mb-1">Blood Group</label>
+                    <input
+                        type="text"
+                        placeholder="e.g. B+"
+                        value={member.bloodGroup || ""}
+                        onChange={(e) => onChange(index, "bloodGroup", e.target.value)}
+                        className="w-full border border-gray-400 px-3 py-2 rounded"
+                    />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-3">
+                <div>
+                    <label className="block text-sm mb-1">Emergency Contact Name</label>
+                    <input
+                        type="text"
+                        value={member.emergencyContactName || ""}
+                        onChange={(e) => onChange(index, "emergencyContactName", e.target.value)}
+                        className="w-full border border-gray-400 px-3 py-2 rounded"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm mb-1">Emergency Contact Number</label>
+                    <input
+                        type="text"
+                        value={member.emergencyContactNumber || ""}
+                        onChange={(e) => onChange(index, "emergencyContactNumber", e.target.value)}
+                        className="w-full border border-gray-400 px-3 py-2 rounded"
+                    />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-3">
+                <div>
+                    <label className="block text-sm mb-1">PF Applicable</label>
+                    <select
+                        value={member.pfApplicable || ""}
+                        onChange={(e) => onChange(index, "pfApplicable", e.target.value)}
+                        className="w-full border border-gray-400 px-3 py-2 rounded"
+                    >
+                        <option value="">Select</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                    </select>
+                </div>
+                {member.pfApplicable === "Yes" && (
+                    <div>
+                        <label className="block text-sm mb-1">UAN Number</label>
+                        <input
+                            type="text"
+                            value={member.uanNumber || ""}
+                            onChange={(e) => onChange(index, "uanNumber", e.target.value)}
+                            className="w-full border border-gray-400 px-3 py-2 rounded"
+                        />
+                    </div>
+                )}
+            </div>
+
             <input
                 type="text"
                 placeholder="Address Line 1"
@@ -54,7 +156,6 @@ function MemberFormBlock({ index, member, category, onChange, onRemove, showRemo
                 className="w-full border border-gray-400 px-3 py-2 rounded mb-3"
             />
 
-            {/* Aadhaar Number – with auto-format */}
             <input
                 type="text"
                 placeholder="Aadhaar Number (xxxx-xxxx-xxxx)"
@@ -67,7 +168,6 @@ function MemberFormBlock({ index, member, category, onChange, onRemove, showRemo
                 className="w-full border border-gray-400 px-3 py-2 rounded mb-3"
             />
 
-            {/* PAN Number – Only for Head Office */}
             {category === "Head Office" && (
                 <input
                     type="text"
@@ -79,7 +179,6 @@ function MemberFormBlock({ index, member, category, onChange, onRemove, showRemo
                 />
             )}
 
-            {/* Mobile */}
             <input
                 type="text"
                 placeholder="Mobile Number"
@@ -88,7 +187,6 @@ function MemberFormBlock({ index, member, category, onChange, onRemove, showRemo
                 className="w-full border border-gray-400 px-3 py-2 rounded mb-3"
             />
 
-            {/* Email + Password + Role – Only for Head Office */}
             {category === "Head Office" && (
                 <>
                     <input
@@ -118,7 +216,6 @@ function MemberFormBlock({ index, member, category, onChange, onRemove, showRemo
                 </>
             )}
 
-            {/* Uploads */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label className="block text-sm font-medium mb-1">Aadhaar Card *</label>
@@ -129,7 +226,6 @@ function MemberFormBlock({ index, member, category, onChange, onRemove, showRemo
                         className="w-full border border-gray-400 px-3 py-2 rounded"
                     />
                 </div>
-
                 <div>
                     <label className="block text-sm font-medium mb-1">Photo *</label>
                     <input
@@ -139,7 +235,6 @@ function MemberFormBlock({ index, member, category, onChange, onRemove, showRemo
                         className="w-full border border-gray-400 px-3 py-2 rounded"
                     />
                 </div>
-
                 <div>
                     <label className="block text-sm font-medium mb-1">PF Declaration</label>
                     <input
@@ -149,7 +244,6 @@ function MemberFormBlock({ index, member, category, onChange, onRemove, showRemo
                         className="w-full border border-gray-400 px-3 py-2 rounded"
                     />
                 </div>
-
                 {category === "Head Office" && (
                     <div>
                         <label className="block text-sm font-medium mb-1">PAN Card *</label>
@@ -163,7 +257,6 @@ function MemberFormBlock({ index, member, category, onChange, onRemove, showRemo
                 )}
             </div>
 
-            {/* Remove Member */}
             {showRemove && (
                 <div className="text-right pt-2">
                     <button

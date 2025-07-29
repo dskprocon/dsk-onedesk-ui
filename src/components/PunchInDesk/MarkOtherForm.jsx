@@ -14,6 +14,7 @@ import {
 import { db } from "../../firebase/firebaseConfig";
 import useLocation from "../../hooks/useLocation";
 import Select from "react-select";
+import { showSuccess, showError } from "../../utils/alertUtils";
 
 function MarkOtherForm({ name, role }) {
     const isAdmin = role?.toUpperCase() === "ADMIN";
@@ -23,7 +24,6 @@ function MarkOtherForm({ name, role }) {
     const [siteOptions, setSiteOptions] = useState([]);
     const [groupedData, setGroupedData] = useState([]);
     const [selectedPeople, setSelectedPeople] = useState([]);
-    const [submitted, setSubmitted] = useState(false);
 
     const [selectedDate, setSelectedDate] = useState(getTodayDateForInput());
     const [selectedTime, setSelectedTime] = useState(getCurrentISTTime());
@@ -40,16 +40,6 @@ function MarkOtherForm({ name, role }) {
         return `${yyyy}-${mm}-${dd}`;
     }
 
-    function getTodayDateDisplay() {
-        const now = new Date();
-        const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-        const ist = new Date(utc + 19800000);
-        const dd = String(ist.getDate()).padStart(2, "0");
-        const mm = String(ist.getMonth() + 1).padStart(2, "0");
-        const yyyy = ist.getFullYear();
-        return `${dd}/${mm}/${yyyy}`;
-    }
-
     function getCurrentISTTime() {
         const now = new Date();
         const utc = now.getTime() + now.getTimezoneOffset() * 60000;
@@ -60,10 +50,10 @@ function MarkOtherForm({ name, role }) {
     useEffect(() => {
         const fetchSites = async () => {
             const snap = await getDocs(collection(db, "sites"));
-            const options = snap.docs.map(doc => {
-                const data = doc.data();
-                return { label: data.name, value: data.name };
-            });
+            const options = snap.docs.map(doc => ({
+                label: doc.data().name,
+                value: doc.data().name
+            }));
             setSiteOptions(options);
         };
         fetchSites();
@@ -106,13 +96,10 @@ function MarkOtherForm({ name, role }) {
                 );
                 const snap = await getDocs(q);
                 const list = snap.docs
-                    .map((doc) => {
-                        const data = doc.data();
-                        return {
-                            id: doc.id,
-                            name: data.personName,
-                        };
-                    })
+                    .map((doc) => ({
+                        id: doc.id,
+                        name: doc.data().personName,
+                    }))
                     .filter((p) => p.name !== name);
                 setGroupedData([{ site: "Head Office", team: "-", members: list }]);
             }
@@ -122,7 +109,7 @@ function MarkOtherForm({ name, role }) {
     }, [category, selectedSites]);
 
     const togglePerson = (id) => {
-        setSelectedPeople((prev) =>
+        setSelectedPeople(prev =>
             prev.includes(id) ? prev.filter((pid) => pid !== id) : [...prev, id]
         );
     };
@@ -135,7 +122,17 @@ function MarkOtherForm({ name, role }) {
     };
 
     const handleSubmit = async () => {
-        const formattedDate = selectedDate.split("-").reverse().join("/");
+        if (!location) {
+            showError("❌ Unable to detect location. Please try again.");
+            return;
+        }
+
+        if (selectedPeople.length === 0) {
+            showError("❌ Please select at least one person.");
+            return;
+        }
+
+        const formattedDate = selectedDate.split("-").reverse().join("-"); // ✅ DD-MM-YYYY
         const saveDate = selectedDate.replace(/-/g, "");
         const isLate = selectedTime > "10:00";
         const halfDay = selectedTime > "11:00";
@@ -151,7 +148,7 @@ function MarkOtherForm({ name, role }) {
 
                 const data = {
                     attendanceId: docId,
-                    personName: `${person.name} (ID-${docId})`,
+                    personName: person.name,
                     category,
                     siteName: group.site,
                     teamName: group.team,
@@ -170,7 +167,7 @@ function MarkOtherForm({ name, role }) {
             }
         }
 
-        setSubmitted(true);
+        showSuccess(`✅ Attendance marked for ${selectedPeople.length} member(s).`);
         setSelectedPeople([]);
     };
 
@@ -228,9 +225,7 @@ function MarkOtherForm({ name, role }) {
                 Location: <span className="text-gray-500">{loading ? "Detecting..." : locationName}</span>
             </div>
 
-            {error && (
-                <p className="text-red-600 text-sm font-semibold">{error}</p>
-            )}
+            {error && <p className="text-red-600 text-sm font-semibold">{error}</p>}
 
             {groupedData.length > 0 && (
                 <div className="border border-gray-400 p-3 rounded bg-white max-h-80 overflow-y-auto">
@@ -239,10 +234,7 @@ function MarkOtherForm({ name, role }) {
                             type="checkbox"
                             className="mr-2"
                             onChange={selectAll}
-                            checked={
-                                selectedPeople.length ===
-                                groupedData.flatMap(g => g.members).length
-                            }
+                            checked={selectedPeople.length === groupedData.flatMap(g => g.members).length}
                         />
                         Select All ({groupedData.flatMap(g => g.members).length})
                     </label>
@@ -273,12 +265,6 @@ function MarkOtherForm({ name, role }) {
                 >
                     ✅ Submit for {selectedPeople.length} Member(s)
                 </button>
-            )}
-
-            {submitted && (
-                <p className="text-green-600 font-semibold text-center">
-                    ✅ Attendance marked successfully.
-                </p>
             )}
         </div>
     );
